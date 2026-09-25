@@ -1,0 +1,1001 @@
+<div class="assets-container">
+  <!-- Header Section -->
+    <div style="margin-bottom: 0px; margin-top: -5px;">
+      <h1 style="font-size: 24px; font-weight: 700; color: var(--text-main); margin: 0; line-height: 1.2;">Asset Management</h1>
+    </div>
+  <!-- Master Data Grid Card with Integrated Toolbar -->
+  <div class="grid-card-table" style="display: flex; flex-direction: column; gap: 10px;">
+    <!-- Top Toolbar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button nz-button nzType="primary" (click)="onAdd()" *ngIf="hasPermission('AssetsModify')">
+          <span nz-icon nzType="plus"></span>Add New
+        </button>
+        <button nz-button nzType="default" nzDanger class="btn-disposal" (click)="onDisposal()" *ngIf="hasPermission('Disposal')">
+          <span nz-icon nzType="delete"></span>Disposal
+        </button>
+        <nz-dropdown-menu #importMenu="nzDropdownMenu">
+          <ul nz-menu>
+            <li nz-menu-item (click)="onImport()">
+              <span nz-icon nzType="upload"></span>Upload for Import
+            </li>
+            <li nz-menu-item (click)="onDownloadTemplate()">
+              <span nz-icon nzType="download"></span>Download Import Template
+            </li>
+          </ul>
+        </nz-dropdown-menu>
+        <button nz-button nz-dropdown class="btn-import" [nzDropdownMenu]="importMenu" *ngIf="hasPermission('AssetsModify')">
+          <span nz-icon nzType="upload"></span>Import <span nz-icon nzType="down"></span>
+        </button>
+        <input type="file" #fileInput class="file-input-hidden" (change)="onFileSelected($event)" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+        <button nz-button nzType="default" class="btn-export" (click)="onExportCurrent()">
+          <span nz-icon nzType="download"></span>Export
+        </button>
+        <button *ngIf="!isViewer()" nz-button nzType="default" class="btn-print" (click)="onPrintSelectedUC()" [disabled]="selectedAssetCodes.size === 0">
+          <span nz-icon nzType="printer"></span>Print UC
+        </button>
+        <button nz-button nzType="dashed" class="btn-refresh" (click)="onRefresh()">
+          <span nz-icon nzType="reload"></span>Refresh
+        </button>
+      </div>
+      
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <nz-input-group [nzSuffix]="suffixIconSearch" class="search-input-group" style="width: 400px;">
+          <input
+            type="text"
+            nz-input
+            placeholder="Search"
+            [(ngModel)]="searchText"
+            (keydown.enter)="onSearch()"
+            [nzAutocomplete]="auto"
+          />
+        </nz-input-group>
+        <nz-autocomplete #auto>
+          <nz-auto-option *ngFor="let option of suggestions" [nzValue]="option.value">
+            <span style="font-weight: 600; color: #1890ff; margin-right: 4px;">[{{ option.category }}]</span>
+            {{ option.value }}
+            <span *ngIf="option.category === 'Unit Code'" style="color: #8c8c8c; font-size: 12px; margin-left: 8px;">(State: {{ option.state }})</span>
+          </nz-auto-option>
+        </nz-autocomplete>
+        <ng-template #suffixIconSearch>
+          <span nz-icon nzType="search" (click)="onSearch()" style="cursor: pointer;"></span>
+        </ng-template>
+        <button nz-button nzType="default" class="btn-filter" (click)="onFilter()">
+          <span nz-icon nzType="filter"></span>
+        </button>
+      </div>
+    </div>
+    <nz-table #assetTable 
+              class="assets-table"
+              [nzData]="filteredRowData" 
+              [nzLoading]="loading" 
+              nzBordered 
+              nzSize="middle" 
+              [nzTotal]="totalRecords"
+              [nzPageIndex]="currentFilter.pageIndex"
+              [nzPageSize]="currentFilter.pageSize"
+              (nzPageIndexChange)="onPageIndexChange($event)"
+              (nzPageSizeChange)="onPageSizeChange($event)"
+              [nzFrontPagination]="false"
+              [nzShowSizeChanger]="true" 
+              [nzPageSizeOptions]="[20, 50, 100]" 
+              [nzScroll]="{ x: '4040px', y: 'calc(100vh - 350px)' }">
+      <thead>
+        <tr>
+          <th nzWidth="60px" nzLeft nzShowCheckbox [nzChecked]="isAllChecked()" [nzIndeterminate]="isIndeterminate()" (nzCheckedChange)="onAllChecked($event)"></th>
+          <th nzWidth="100px" nzLeft>Type</th>
+          <th nzWidth="200px" nzLeft>Unit Code</th>
+          <th nzWidth="240px">User</th>
+          <th nzWidth="120px">Department</th>
+          <th nzWidth="120px">State</th>
+          <th nzWidth="120px">Status</th>
+          <th nzWidth="100px">HR Code</th>
+          <th nzWidth="350px">Notes</th>
+          <th nzWidth="220px">Area</th>
+          <th nzWidth="180px">Office</th>
+          <th nzWidth="200px">Company</th>
+          <th nzWidth="250px">Email</th>
+          <th nzWidth="100px">Watt</th>
+          <th nzWidth="180px">Purchased Value</th>
+          <th nzWidth="180px">Brand</th>
+          <th nzWidth="180px">Model</th>
+          <th nzWidth="200px">Serial</th>
+          <th nzWidth="200px">Vendor</th>
+          <th nzWidth="180px">Purchased Date</th>
+          <th nzWidth="180px">Division</th>
+          <th nzWidth="180px">Group Dep</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (data of assetTable.data; track data.unitCode) {
+        <tr (click)="onSelectAsset(data)" [class.selected]="selectedAsset?.unitCode === data.unitCode" class="clickable-row">
+          <td nzLeft nzShowCheckbox [nzChecked]="selectedAssetCodes.has(data.unitCode)" (nzCheckedChange)="onItemChecked(data.unitCode, $event)" (click)="$event.stopPropagation()"></td>
+          <td nzLeft>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: #5f6368;">{{ getTypeIcon(data.type) }}</span>
+              <strong>{{ data.type }}</strong>
+            </div>
+          </td>
+          <td nzLeft><strong class="unit-code-text">{{ data.unitCode }}</strong></td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div *ngIf="data.userName" style="width: 24px; height: 24px; border-radius: 50%; background: #d2e3fc; color: #1a73e8; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px;">
+                {{ getInitials(data.userName) }}
+              </div>
+              <span>{{ data.userName || 'N/A' }}</span>
+            </div>
+          </td>
+          <td>{{ data.departmentName }}</td>
+          <td>
+            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold border"
+                  [ngClass]="getStateBadgeClass(data.stateName)" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+              {{ data.stateName || 'N/A' }}
+            </span>
+          </td>
+          <td>
+            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold border"
+                  [ngClass]="getStatusBadgeClass(data.status)" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+              {{ data.status || 'N/A' }}
+            </span>
+          </td>
+          <td>{{ data.hrCode }}</td>
+          <td>{{ data.notes }}</td>
+          <td>{{ data.area }}</td>
+          <td>{{ data.officeName }}</td>
+          <td>{{ data.companyName }}</td>
+          <td>{{ data.email }}</td>
+          <td>{{ data.watt }}</td>
+          <td>{{ data.purchasedValue }}</td>
+          <td>{{ data.brand }}</td>
+          <td>{{ data.model }}</td>
+          <td>{{ data.serial }}</td>
+          <td>{{ data.vendorName }}</td>
+          <td>{{ data.purchasedDate | date:'yyyy-MM-dd' }}</td>
+          <td>{{ data.divisionName }}</td>
+          <td>{{ data.groupDepName }}</td>
+        </tr>
+        }
+      </tbody>
+    </nz-table>
+  </div>
+
+
+  <!-- Advanced Filter Modal -->
+  <nz-modal [(nzVisible)]="isFilterVisible" nzTitle="Advanced Filter" (nzOnCancel)="isFilterVisible = false" [nzWidth]="850" [nzFooter]="modalFooter">
+    <ng-container *nzModalContent>
+      <div nz-row>
+        <div nz-col nzSpan="24" style="margin-bottom: 16px;">
+          <nz-table nzTemplateMode class="table-advanced-filter" style="width: 100%;">
+            <thead>
+              <tr>
+                <th nzWidth="60px" style="text-align: center;">Action</th>
+                <th nzWidth="250px">Field</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of selectedFilters; index as index">
+                <td style="text-align: center; vertical-align: middle;">
+                  <button nz-button nzType="text" nzDanger (click)="deleteFilterRow(index)" style="display: inline-flex; align-items: center; justify-content: center;">
+                    <span nz-icon nzType="delete"></span>
+                  </button>
+                </td>
+                <td>
+                  <nz-select (ngModelChange)="changeFilterField($event, item)" [(ngModel)]="item.field" nzShowSearch nzAllowClear nzPlaceHolder="Select field" style="width: 100%;">
+                    <nz-option *ngFor="let field of filterFields" [nzValue]="field.field" [nzLabel]="field.fieldName"></nz-option>
+                  </nz-select>
+                </td>
+                <td>
+                  <ng-container [ngSwitch]="item.dataType">
+                    <ng-container *ngSwitchCase="'string'">
+                      <input [(ngModel)]="item.stringValue" nz-input placeholder="Enter text value" />
+                    </ng-container>
+                    <ng-container *ngSwitchCase="'number'">
+                      <input [(ngModel)]="item.numberValue" nz-input type="number" placeholder="Enter number value" />
+                    </ng-container>
+                    <ng-container *ngSwitchCase="'dropdown'">
+                      <nz-select [(ngModel)]="item.dropdownValue" nzShowSearch nzAllowClear nzPlaceHolder="Select option" style="width: 100%;">
+                        <nz-option *ngFor="let option of item.selectDatas" [nzValue]="option.id" [nzLabel]="option.text"></nz-option>
+                      </nz-select>
+                    </ng-container>
+                    <ng-container *ngSwitchCase="'multiselect'">
+                      <nz-select [(ngModel)]="item.multiSelectValue" nzMode="multiple" nzShowSearch nzAllowClear nzPlaceHolder="Select options" style="width: 100%;">
+                        <nz-option *ngFor="let option of item.selectDatas" [nzValue]="option.id" [nzLabel]="option.text"></nz-option>
+                      </nz-select>
+                    </ng-container>
+                  </ng-container>
+                </td>
+              </tr>
+            </tbody>
+          </nz-table>
+          <div style="margin-top: 16px;">
+            <button nz-button nzType="dashed" (click)="addFilterRow()" style="width: 100%; display: flex; align-items: center; justify-content: center; border-style: dashed;">
+              <span nz-icon nzType="plus"></span>Add Filter Row
+            </button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+    <ng-template #modalFooter>
+      <button nz-button nzType="default" (click)="resetAdvancedFilter()">Reset Default</button>
+      <button nz-button nzType="default" (click)="isFilterVisible = false">Cancel</button>
+      <button nz-button nzType="primary" (click)="submitAdvancedFilter()">Apply Filter</button>
+    </ng-template>
+  </nz-modal>
+
+  <!-- Add New Asset Modal -->
+  <nz-modal [(nzVisible)]="isAddModalVisible" nzTitle="Add New Asset" (nzOnCancel)="isAddModalVisible = false" [nzWidth]="1200" [nzFooter]="addModalFooter" nzClassName="add-asset-modal">
+    <ng-container *nzModalContent>
+      <!-- Step progress bar -->
+      <nz-steps [nzCurrent]="currentAddStep >= 2 ? 2 : currentAddStep" style="margin-bottom: 24px; padding: 0 16px;">
+        <nz-step nzTitle="Step 1" nzDescription="Basic Info"></nz-step>
+        <nz-step nzTitle="Step 2" nzDescription="Specs & Sub-Assets"></nz-step>
+        <nz-step nzTitle="Step 3" nzDescription="Assignment & Dates"></nz-step>
+      </nz-steps>
+
+      <div #stepsWrapper [style.display]="currentAddStep === 3 ? 'none' : 'block'" [style.height]="currentAddStep === 0 ? '300px' : (currentAddStep === 1 ? '550px' : '320px')" style="overflow-y: auto; overflow-x: hidden; width: 100%; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;" (scroll)="onStepScroll($event)">
+        <div class="steps-carousel" style="width: 100%; display: block;">
+          <div class="step-container" style="height: 300px; padding: 0 16px; scroll-snap-align: start; overflow-y: auto;">
+            <form nz-form [nzLayout]="'vertical'" [formGroup]="addForm">
+              <div nz-row [nzGutter]="16">
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label nzRequired>Type</nz-form-label>
+                    <nz-form-control nzErrorTip="Please select asset type">
+                      <nz-select class="custom-select" formControlName="type" nzShowSearch nzAllowClear nzPlaceHolder="Select type" (ngModelChange)="onAddFormTypeChange($event)">
+                        <nz-option *ngFor="let item of typeList" [nzLabel]="item.typeName + ' (' + item.type + ')'" [nzValue]="item.type"></nz-option>
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label nzRequired>Company</nz-form-label>
+                    <nz-form-control nzErrorTip="Please select company">
+                      <nz-select class="custom-select" formControlName="company" nzShowSearch nzAllowClear nzPlaceHolder="Select company">
+                        <nz-option *ngFor="let item of companyList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label nzRequired>Office</nz-form-label>
+                    <nz-form-control nzErrorTip="Please select office">
+                      <nz-select class="custom-select" formControlName="office" nzShowSearch nzAllowClear nzPlaceHolder="Select office">
+                        <nz-option *ngFor="let item of officeList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+              </div>
+              <div nz-row [nzGutter]="16">
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label nzRequired>Department</nz-form-label>
+                    <nz-form-control nzErrorTip="Please select department">
+                      <nz-select class="custom-select" formControlName="department" nzShowSearch nzAllowClear nzPlaceHolder="Select department">
+                        <nz-option *ngFor="let item of getFilteredDepartments('add')" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label nzRequired>Division</nz-form-label>
+                    <nz-form-control nzErrorTip="Please select division">
+                      <nz-select class="custom-select" formControlName="division" nzShowSearch nzAllowClear nzPlaceHolder="Select division">
+                        <nz-option *ngFor="let item of getFilteredDivisions('add')" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label nzRequired>Group</nz-form-label>
+                    <nz-form-control nzErrorTip="Please select group department">
+                      <nz-select class="custom-select" formControlName="groupDep" nzShowSearch nzAllowClear nzPlaceHolder="Select group department">
+                        <nz-option *ngFor="let item of groupDepList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+              </div>
+              <div nz-row [nzGutter]="16">
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label nzRequired>Area</nz-form-label>
+                    <nz-form-control nzErrorTip="Please select area">
+                      <nz-select class="custom-select" formControlName="area" nzAllowClear nzPlaceHolder="Select area">
+                        <nz-option *ngFor="let area of allowedAreas" [nzValue]="area" [nzLabel]="area"></nz-option>
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Step 2 Container -->
+          <div class="step-container" style="height: 550px; padding: 0 16px; scroll-snap-align: start; overflow-y: auto;">
+            <form nz-form [nzLayout]="'vertical'" [formGroup]="addForm">
+              <div nz-row [nzGutter]="24">
+                <!-- Left Sidebar: Sub-Assets (Visible only for LTP/DPC) -->
+                <div nz-col [nzSpan]="6" style="border-right: 1px solid #f0f0f0; padding-right: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 250px;" *ngIf="typeHasSubAssets(addForm.get('type')?.value)">
+                  <h4 style="margin-bottom: 8px; font-weight: 600; color: #1890ff;">Config Target</h4>
+                  
+                  <!-- Main Asset Option -->
+                  <div 
+                    (click)="selectAddSpecTarget('main')"
+                    [style.background]="activeAddSpecTarget === 'main' ? '#e6f7ff' : '#ffffff'"
+                    [style.border-color]="activeAddSpecTarget === 'main' ? '#1890ff' : '#d9d9d9'"
+                    style="padding: 10px 12px; border: 1px solid; border-radius: 6px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: space-between;"
+                  >
+                    <span style="font-weight: 600; font-size: 13px;">Main Asset ({{ addForm.get('type')?.value }})</span>
+                    <span nz-icon nzType="right" *ngIf="activeAddSpecTarget === 'main'"></span>
+                  </div>
+
+                  <!-- Sub-Assets List -->
+                  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px; border-top: 1px solid #f0f0f0; padding-top: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                      <h5 style="font-weight: 600; color: #888888; font-size: 12px; margin: 0;">Sub-Assets</h5>
+                    </div>
+
+                    <!-- Add Extra Sub-Asset Dropdown -->
+                    <div style="margin-bottom: 8px;">
+                      <nz-select 
+                        style="width: 100%;" 
+                        nzPlaceHolder="+ Add Sub-Asset" 
+                        nzShowSearch 
+                        nzAllowClear
+                        [(ngModel)]="selectedExtraSubAssetType" 
+                        [ngModelOptions]="{standalone: true}"
+                        (ngModelChange)="addExtraSubAssetType($event)"
+                      >
+                        <nz-option *ngFor="let t of selectableExtraSubAssetTypes; trackBy: trackByType" [nzLabel]="t.type + ' - ' + (t.typeName || t.description || '')" [nzValue]="t.type"></nz-option>
+                      </nz-select>
+                    </div>
+
+                    <ng-container *ngFor="let subType of availableSubAssetTypes; trackBy: trackByType">
+                      <div 
+                        [style.background]="activeAddSpecTarget === getSubAssetControlPrefix(subType.type) ? '#e6f7ff' : '#fafafa'"
+                        [style.border-color]="activeAddSpecTarget === getSubAssetControlPrefix(subType.type) ? '#1890ff' : '#f0f0f0'"
+                        style="padding: 8px 12px; border: 1px solid; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; transition: all 0.3s;"
+                      >
+                        <label nz-checkbox [formControlName]="'has' + (getSubAssetControlPrefix(subType.type) | titlecase)">
+                          {{ subType.type }}
+                        </label>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                          <!-- Configure Target Selector Button -->
+                          <button 
+                            *ngIf="addForm.get('has' + (getSubAssetControlPrefix(subType.type) | titlecase))?.value"
+                            nz-button 
+                            [nzType]="activeAddSpecTarget === getSubAssetControlPrefix(subType.type) ? 'primary' : 'default'" 
+                            nzSize="small"
+                            (click)="selectAddSpecTarget(getSubAssetControlPrefix(subType.type)); $event.stopPropagation();"
+                          >
+                            Specs
+                          </button>
+                          <!-- Remove extra sub asset -->
+                          <button 
+                            *ngIf="extraSubAssetTypes.includes(subType.type.toUpperCase())"
+                            nz-button
+                            nzType="text"
+                            nzDanger
+                            nzSize="small"
+                            (click)="removeExtraSubAssetType(subType.type); $event.stopPropagation();"
+                          >
+                            <span nz-icon nzType="close"></span>
+                          </button>
+                        </div>
+                      </div>
+                    </ng-container>
+                  </div>
+                </div>
+
+                <!-- Right Column: Tech Specs & Asset Info -->
+                <div nz-col [nzSpan]="typeHasSubAssets(addForm.get('type')?.value) ? 18 : 24">
+                  <h4 style="margin-bottom: 12px; font-weight: 600; color: #1890ff; text-transform: uppercase;">
+                    Editing: {{ activeAddSpecTarget === 'main' ? ('Main Asset (' + addForm.get('type')?.value + ')') : (activeAddSpecTarget | titlecase) }}
+                  </h4>
+
+                  <div [ngSwitch]="activeAddSpecTarget">
+                    <!-- CASE: MAIN -->
+                    <div *ngSwitchCase="'main'">
+                      <!-- Dynamic DeviceConfig Specs -->
+                      <div *ngIf="getActiveConfig()" style="background: #fafafa; padding: 12px; border-radius: 8px; border: 1px solid #f0f0f0; margin-bottom: 16px;">
+                        <h5 style="font-weight: 600; margin-bottom: 8px; color: #555555;">Technical Specifications</h5>
+                        <div nz-row [nzGutter]="16">
+                          <ng-container *ngFor="let num of [1,2,3,4,5,6,7,8,9]">
+                            <div nz-col [nzSpan]="8" *ngIf="getActiveConfig()['detail' + num] && getActiveConfig()['detail' + num] !== 'NONE'">
+                              <nz-form-item style="margin-bottom: 8px;">
+                                <nz-form-label>{{ getActiveConfig()['detail' + num] }}</nz-form-label>
+                                <nz-form-control>
+                                  <nz-select class="custom-select" [formControlName]="'detail' + num" nzShowSearch nzAllowClear [nzPlaceHolder]="'Select ' + getActiveConfig()['detail' + num]">
+                                    <nz-option *ngFor="let opt of getActiveDetailOptions(num)" [nzLabel]="opt.techSpecs" [nzValue]="opt.id"></nz-option>
+                                  </nz-select>
+                                </nz-form-control>
+                              </nz-form-item>
+                            </div>
+                          </ng-container>
+                        </div>
+                      </div>
+
+                      <div nz-row [nzGutter]="16">
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label nzRequired>Serial</nz-form-label>
+                            <nz-form-control nzErrorTip="Please enter Serial Number">
+                              <input nz-input formControlName="serial" placeholder="Serial" maxlength="50" />
+                            </nz-form-control>
+                          </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label>Model</nz-form-label>
+                            <nz-form-control><input nz-input formControlName="model" placeholder="Model" maxlength="50" /></nz-form-control>
+                          </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label>Brand</nz-form-label>
+                            <nz-form-control><input nz-input formControlName="brand" placeholder="Brand" maxlength="20" /></nz-form-control>
+                          </nz-form-item>
+                        </div>
+                      </div>
+
+                      <div nz-row [nzGutter]="16">
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label>Vendor</nz-form-label>
+                            <nz-form-control>
+                              <nz-select formControlName="vendor" nzShowSearch nzAllowClear nzPlaceHolder="Select vendor">
+                                <nz-option *ngFor="let item of vendorList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                              </nz-select>
+                            </nz-form-control>
+                          </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label>State</nz-form-label>
+                            <nz-form-control>
+                              <nz-select formControlName="state" nzShowSearch nzAllowClear nzPlaceHolder="Select state">
+                                <nz-option *ngFor="let item of stateList" [nzLabel]="item.description" [nzValue]="item.id"></nz-option>
+                              </nz-select>
+                            </nz-form-control>
+                          </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label>Status</nz-form-label>
+                            <nz-form-control>
+                              <nz-select formControlName="status" nzPlaceHolder="Select status">
+                                <nz-option nzValue="GOOD" nzLabel="GOOD"></nz-option>
+                                <nz-option nzValue="NORMAL" nzLabel="NORMAL"></nz-option>
+                                <nz-option nzValue="BAD" nzLabel="BAD"></nz-option>
+                                <nz-option nzValue="BROKEN" nzLabel="BROKEN"></nz-option>
+                              </nz-select>
+                            </nz-form-control>
+                          </nz-form-item>
+                        </div>
+                      </div>
+
+                      <div nz-row [nzGutter]="16">
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label>Purchased Value</nz-form-label>
+                            <nz-form-control><input nz-input type="number" formControlName="purchasedValue" placeholder="0" /></nz-form-control>
+                          </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label>Warranty Expiration (Months)</nz-form-label>
+                            <nz-form-control><input nz-input type="number" formControlName="warrantyExpiration" placeholder="1" /></nz-form-control>
+                          </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="8">
+                          <nz-form-item>
+                            <nz-form-label>Watt</nz-form-label>
+                            <nz-form-control><input nz-input formControlName="watt" placeholder="e.g. 500W" maxlength="50" /></nz-form-control>
+                          </nz-form-item>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- SUB-ASSETS LOOP CASES -->
+                    <ng-container *ngFor="let subType of availableSubAssetTypes; trackBy: trackByType">
+                      <div *ngSwitchCase="getSubAssetControlPrefix(subType.type)">
+                        <!-- Dynamic DeviceConfig Specs -->
+                        <div *ngIf="getActiveConfig()" style="background: #fafafa; padding: 12px; border-radius: 8px; border: 1px solid #f0f0f0; margin-bottom: 16px;">
+                          <h5 style="font-weight: 600; margin-bottom: 8px; color: #555555;">Technical Specifications</h5>
+                          <div nz-row [nzGutter]="16">
+                            <ng-container *ngFor="let num of [1,2,3,4,5,6,7,8,9]">
+                              <div nz-col [nzSpan]="8" *ngIf="getActiveConfig()['detail' + num] && getActiveConfig()['detail' + num] !== 'NONE'">
+                                <nz-form-item style="margin-bottom: 8px;">
+                                  <nz-form-label>{{ getActiveConfig()['detail' + num] }}</nz-form-label>
+                                  <nz-form-control>
+                                    <nz-select class="custom-select" [formControlName]="getSubAssetControlPrefix(subType.type) + 'Detail' + num" nzShowSearch nzAllowClear [nzPlaceHolder]="'Select ' + getActiveConfig()['detail' + num]">
+                                      <nz-option *ngFor="let opt of getActiveDetailOptions(num)" [nzLabel]="opt.techSpecs" [nzValue]="opt.id"></nz-option>
+                                    </nz-select>
+                                  </nz-form-control>
+                                </nz-form-item>
+                              </div>
+                            </ng-container>
+                          </div>
+                        </div>
+
+                        <div nz-row [nzGutter]="16">
+                          <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                              <nz-form-label>Serial</nz-form-label>
+                              <nz-form-control><input nz-input [formControlName]="getSubAssetControlPrefix(subType.type) + 'Serial'" placeholder="Serial" maxlength="50" /></nz-form-control>
+                            </nz-form-item>
+                          </div>
+                          <div nz-col [nzSpan]="8">
+                            <nz-col [nzSpan]="24" style="padding: 0;">
+                              <nz-form-item>
+                                <nz-form-label>Model</nz-form-label>
+                                <nz-form-control><input nz-input [formControlName]="getSubAssetControlPrefix(subType.type) + 'Model'" placeholder="Model" maxlength="50" /></nz-form-control>
+                              </nz-form-item>
+                            </nz-col>
+                          </div>
+                          <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                              <nz-form-label>Brand</nz-form-label>
+                              <nz-form-control><input nz-input [formControlName]="getSubAssetControlPrefix(subType.type) + 'Brand'" placeholder="Brand" maxlength="20" /></nz-form-control>
+                            </nz-form-item>
+                          </div>
+                        </div>
+
+                        <div nz-row [nzGutter]="16">
+                          <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                              <nz-form-label>Vendor</nz-form-label>
+                              <nz-form-control>
+                                <nz-select [formControlName]="getSubAssetControlPrefix(subType.type) + 'Vendor'" nzShowSearch nzAllowClear nzPlaceHolder="Select vendor">
+                                  <nz-option *ngFor="let item of vendorList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                                </nz-select>
+                              </nz-form-control>
+                            </nz-form-item>
+                          </div>
+                          <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                              <nz-form-label>State</nz-form-label>
+                              <nz-form-control>
+                                <nz-select [formControlName]="getSubAssetControlPrefix(subType.type) + 'State'" nzShowSearch nzAllowClear nzPlaceHolder="Select state">
+                                  <nz-option *ngFor="let item of stateList" [nzLabel]="item.description" [nzValue]="item.id"></nz-option>
+                                </nz-select>
+                              </nz-form-control>
+                            </nz-form-item>
+                          </div>
+                          <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                              <nz-form-label>Status</nz-form-label>
+                              <nz-form-control>
+                                <nz-select [formControlName]="getSubAssetControlPrefix(subType.type) + 'Status'" nzPlaceHolder="Select status">
+                                  <nz-option nzValue="GOOD" nzLabel="GOOD"></nz-option>
+                                  <nz-option nzValue="NORMAL" nzLabel="NORMAL"></nz-option>
+                                  <nz-option nzValue="BAD" nzLabel="BAD"></nz-option>
+                                  <nz-option nzValue="BROKEN" nzLabel="BROKEN"></nz-option>
+                                </nz-select>
+                              </nz-form-control>
+                            </nz-form-item>
+                          </div>
+                        </div>
+
+                        <div nz-row [nzGutter]="16">
+                          <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                              <nz-form-label>Purchased Value</nz-form-label>
+                              <nz-form-control><input nz-input type="number" [formControlName]="getSubAssetControlPrefix(subType.type) + 'PurchasedValue'" placeholder="0" /></nz-form-control>
+                            </nz-form-item>
+                          </div>
+                          <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                              <nz-form-label>Warranty Expiration (Months)</nz-form-label>
+                              <nz-form-control><input nz-input type="number" [formControlName]="getSubAssetControlPrefix(subType.type) + 'WarrantyExpiration'" placeholder="1" /></nz-form-control>
+                            </nz-form-item>
+                          </div>
+                          <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                              <nz-form-label>Watt</nz-form-label>
+                              <nz-form-control><input nz-input [formControlName]="getSubAssetControlPrefix(subType.type) + 'Watt'" placeholder="e.g. 500W" maxlength="50" /></nz-form-control>
+                            </nz-form-item>
+                          </div>
+                        </div>
+                      </div>
+                    </ng-container>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Step 3 Container -->
+          <div class="step-container" style="height: 320px; padding: 0 16px; scroll-snap-align: start; overflow-y: auto;">
+            <form nz-form [nzLayout]="'vertical'" [formGroup]="addForm">
+              <div nz-row [nzGutter]="16">
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label>User Name</nz-form-label>
+                    <nz-form-control><input nz-input formControlName="userName" placeholder="User Name" maxlength="50" /></nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label>Email</nz-form-label>
+                    <nz-form-control><input nz-input formControlName="email" placeholder="Email" maxlength="50" /></nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label>HR Code</nz-form-label>
+                    <nz-form-control><input nz-input formControlName="hrCode" placeholder="HR Code" maxlength="10" /></nz-form-control>
+                  </nz-form-item>
+                </div>
+              </div>
+              <div nz-row [nzGutter]="16">
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label>Purchased Date</nz-form-label>
+                    <nz-form-control>
+                      <nz-date-picker formControlName="purchasedDate" style="width: 100%;"></nz-date-picker>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label>Usage Date</nz-form-label>
+                    <nz-form-control>
+                      <nz-date-picker formControlName="usageDate" style="width: 100%;"></nz-date-picker>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="8">
+                  <nz-form-item>
+                    <nz-form-label>Record Date</nz-form-label>
+                    <nz-form-control>
+                      <nz-date-picker formControlName="recordDate" style="width: 100%;"></nz-date-picker>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+              </div>
+              <nz-form-item style="margin-bottom: 8px;">
+                <nz-form-label>Notes</nz-form-label>
+                <nz-form-control>
+                  <textarea nz-input formControlName="notes" rows="2" placeholder="Notes..."></textarea>
+                </nz-form-control>
+              </nz-form-item>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 Container (Review & Confirm Details) -->
+      <div [style.display]="currentAddStep === 3 ? 'block' : 'none'" style="padding: 24px; overflow-y: auto; height: 550px; background: #f8f9fb; border-radius: 8px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          
+          <!-- Left Column -->
+          <div style="display: flex; flex-direction: column; gap: 24px;">
+            
+            <!-- Primary Details -->
+            <section (click)="scrollToStep(1)" style="background: #ffffff; border: 1px solid #c3c6d6; border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s; hover:border-color: #0c56d0;" onmouseover="this.style.borderColor='#0c56d0';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.borderColor='#c3c6d6';this.style.boxShadow='none'">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.5px;">Primary Details</h3>
+                <span nz-icon nzType="" style="color: #0c56d0; font-size: 18px;"></span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span nz-icon style="color: #535f73; font-size: 16px;"></span>
+                  <span style="font-size: 14px; font-weight: 700; color: #191c1e;">{{ formVal.type || 'N/A' }}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Unit Code</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #0c56d0; margin: 0;">{{ formVal.unitCode || 'Auto-generated' }}</p>
+                  </div>
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Brand</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ formVal.brand || 'N/A' }}</p>
+                  </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Model</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ formVal.model || 'N/A' }}</p>
+                  </div>
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Serial</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ formVal.serial || 'N/A' }}</p>
+                  </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Vendor</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ getVendorName(formVal.vendor) || 'N/A' }}</p>
+                  </div>
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">State</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ getStateName(formVal.state) || 'N/A' }}</p>
+                  </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Status</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ formVal.status || 'N/A' }}</p>
+                  </div>
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Watt</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ formVal.watt || 'N/A' }}</p>
+                  </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Purchased Value</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ formVal.purchasedValue | number:'1.0-0' }} VND</p>
+                  </div>
+                  <div>
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">Warranty Expiration</p>
+                    <p style="font-size: 13px; font-weight: 600; color: #191c1e; margin: 0;">{{ formVal.warrantyExpiration ? formVal.warrantyExpiration + ' Months' : 'N/A' }}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Assignment -->
+            <section (click)="scrollToStep(2)" style="background: #ffffff; border: 1px solid #c3c6d6; border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#0c56d0';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.borderColor='#c3c6d6';this.style.boxShadow='none'">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.5px;">Assignment</h3>
+                <span nz-icon nzType="user" style="color: #0c56d0; font-size: 18px;"></span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #d4e0f8; color: #003d9b; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+                  {{ (formVal.userName || 'N')[0] | uppercase }}
+                </div>
+                <div>
+                  <p style="font-size: 14px; font-weight: 700; color: #191c1e; margin: 0;">{{ formVal.userName || 'No Custodian' }}</p>
+                  <p style="font-size: 12px; color: #434654; margin: 0;">{{ formVal.email || 'No Email' }} <span *ngIf="formVal.hrCode">({{ formVal.hrCode }})</span></p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Tech Specs -->
+            <section (click)="scrollToStep(1)" style="background: #ffffff; border: 1px solid #c3c6d6; border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#0c56d0';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.borderColor='#c3c6d6';this.style.boxShadow='none'">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.5px;">Tech Specs</h3>
+                <span nz-icon nzType="setting" style="color: #0c56d0; font-size: 18px;"></span>
+              </div>
+              <div *ngIf="hasAnyTechSpecs('main'); else noSpecs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <ng-container *ngFor="let num of [1,2,3,4,5,6,7,8,9]">
+                  <div *ngIf="getTechSpecLabel('main', num) && getTechSpecValueLabel('main', num)">
+                    <p style="font-size: 11px; color: #434654; margin: 0 0 2px 0;">{{ getTechSpecLabel('main', num) }}</p>
+                    <p style="font-size: 12px; font-weight: 600; color: #191c1e; margin: 0;">{{ getTechSpecValueLabel('main', num) }}</p>
+                  </div>
+                </ng-container>
+              </div>
+              <ng-template #noSpecs>
+                <p style="font-size: 12px; color: #434654; margin: 0; font-style: italic;">No technical specifications defined.</p>
+              </ng-template>
+            </section>
+          </div>
+
+          <!-- Right Column -->
+          <div style="display: flex; flex-direction: column; gap: 24px;">
+            
+            <!-- Basic Info -->
+            <section (click)="scrollToStep(0)" style="background: #ffffff; border: 1px solid #c3c6d6; border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#0c56d0';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.borderColor='#c3c6d6';this.style.boxShadow='none'">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.5px;">Basic Info</h3>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <p style="font-size: 12px; margin: 0; color: #191c1e;"><span style="color: #434654; font-weight: 500;">Company:</span> {{ getCompanyName(formVal.company) || 'N/A' }}</p>
+                <p style="font-size: 12px; margin: 0; color: #191c1e;"><span style="color: #434654; font-weight: 500;">Department:</span> {{ getDepartmentName(formVal.department) || 'N/A' }}</p>
+                <p style="font-size: 12px; margin: 0; color: #191c1e;"><span style="color: #434654; font-weight: 500;">Office:</span> {{ getOfficeName(formVal.office) || 'N/A' }}</p>
+                <p style="font-size: 12px; margin: 0; color: #191c1e;"><span style="color: #434654; font-weight: 500;">Area:</span> {{ formVal.area || 'N/A' }}</p>
+                <p style="font-size: 12px; margin: 0; color: #191c1e;"><span style="color: #434654; font-weight: 500;">Division:</span> {{ getDivisionName(formVal.division) || 'N/A' }}</p>
+                <p style="font-size: 12px; margin: 0; color: #191c1e;"><span style="color: #434654; font-weight: 500;">Group Department:</span> {{ getGroupDepName(formVal.groupDep) || 'N/A' }}</p>
+              </div>
+            </section>
+
+            <!-- Sub-Assets -->
+            <section (click)="scrollToStep(1)" style="background: #ffffff; border: 1px solid #c3c6d6; border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#0c56d0';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.borderColor='#c3c6d6';this.style.boxShadow='none'">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.5px;">Sub-Assets</h3>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <ng-container *ngFor="let subType of availableSubAssetTypes; trackBy: trackByType">
+                  <div *ngIf="formVal['has' + (getSubAssetControlPrefix(subType.type) | titlecase)]" style="font-size: 11px; padding: 8px; background: #f8f9fb; border-radius: 4px; border: 1px solid #c3c6d6; display: flex; justify-content: space-between; align-items: center;">
+                    <span>
+                      <strong>{{ formVal[getSubAssetControlPrefix(subType.type) + 'Brand'] || 'N/A' }}</strong> {{ formVal[getSubAssetControlPrefix(subType.type) + 'Model'] || 'N/A' }}
+                      <span *ngIf="formVal[getSubAssetControlPrefix(subType.type) + 'Serial']" style="color: #8c8c8c; margin-left: 4px;">(SN: {{ formVal[getSubAssetControlPrefix(subType.type) + 'Serial'] }})</span>
+                    </span>
+                    <span style="font-weight: 700; color: #004b58; font-size: 10px; text-transform: uppercase;">{{ subType.type }}</span>
+                  </div>
+                </ng-container>
+              </div>
+            </section>
+
+            <!-- Notes -->
+            <section (click)="scrollToStep(2)" style="background: #ffffff; border: 1px solid #c3c6d6; border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#0c56d0';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.borderColor='#c3c6d6';this.style.boxShadow='none'">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.5px;">Notes</h3>
+                <span nz-icon nzType="file-text" style="color: #0c56d0; font-size: 18px;"></span>
+              </div>
+              <p style="font-size: 13px; font-style: italic; color: #434654; line-height: 1.6; margin: 0;">
+                {{ formVal.notes ? '"' + formVal.notes + '"' : 'No notes provided.' }}
+              </p>
+            </section>
+          </div>
+
+        </div>
+      </div>
+
+    </ng-container>
+    <ng-template #addModalFooter>
+      <button nz-button nzType="default" (click)="isAddModalVisible = false">Cancel</button>
+      <button nz-button nzType="default" *ngIf="currentAddStep > 0" (click)="prevAddStep()">Previous</button>
+      <button nz-button nzType="primary" *ngIf="currentAddStep < 2" (click)="nextAddStep()">Next</button>
+      <button nz-button nzType="primary" *ngIf="currentAddStep === 2" (click)="submitAddForm()">Preview</button>
+      <button nz-button nzType="primary" *ngIf="currentAddStep === 3" (click)="executeSubmitAddForm()">Save</button>
+    </ng-template>
+  </nz-modal>
+
+  <!-- Disposal Batch Manager Modal -->
+  <nz-modal [(nzVisible)]="isDisposalModalVisible" nzTitle="Quản lý lô thanh lý" (nzOnCancel)="isDisposalModalVisible = false" [nzWidth]="1200" [nzFooter]="null" nzClassName="disposal-modal">
+    <ng-container *nzModalContent>
+      <nz-tabs>
+        <!-- Tab 1: Create WFD (Waiting For Disposal) -->
+        <nz-tab nzTitle="Chuyển trạng thái WFD">
+          <div nz-row [nzGutter]="24">
+            <div nz-col [nzSpan]="12">
+              <h5 style="font-weight: 600; margin-bottom: 8px;">Nhập danh sách Unit Code cần nhập:</h5>
+              <textarea nz-input [(ngModel)]="disposalInputCodes" rows="6" placeholder="(Cách nhau bằng dấu phẩy hoặc theo dòng)"></textarea>
+               <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 8px;">
+                  <button nz-button nzType="default" (click)="disposalInputCodes = ''; disposalCheckedAssets = []; isDisposalTransferEnabled = false;">Xóa</button>
+                  <button nz-button nzType="default" (click)="triggerDisposalUpload()">
+                    <span nz-icon nzType="file-excel"></span> Import Excel
+                  </button>
+                  <input type="file" #disposalFileInput style="display: none;" (change)="onDisposalFileSelected($event)" accept=".xlsx,.xls" />
+                </div>
+                <button nz-button nzType="primary" (click)="checkDisposalUnitCodes()">Kiểm tra</button>
+              </div>
+
+              <div style="margin-top: 24px;">
+                <h5 style="font-weight: 600; margin-bottom: 8px;">Ghi chú đợt thanh lý:</h5>
+                <input nz-input [(ngModel)]="disposalWfdNote" placeholder="Ví dụ: Lô máy văn phòng hỏng Quý 2/2026" />
+              </div>
+            </div>
+
+            <div nz-col [nzSpan]="12" style="border-left: 1px solid #f0f0f0; padding-left: 24px;">
+              <h5 style="font-weight: 600; margin-bottom: 8px;">Kết quả kiểm tra chi tiết:</h5>
+              <div style="max-height: 350px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 4px; background: #fafafa;">
+                <nz-table #checkTable [nzData]="disposalCheckedAssets" [nzSize]="'small'" [nzFrontPagination]="false" [nzShowPagination]="false">
+                  <thead>
+                    <tr>
+                      <th>Unit Code</th>
+                      <th>Trạng thái</th>
+                      <th>Ghi chú</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let item of checkTable.data">
+                      <td><strong>{{ item.unitCode }}</strong></td>
+                      <td>
+                        <span *ngIf="item.valid" style="color: #52c41a; font-weight: 600;">Hợp lệ</span>
+                        <span *ngIf="!item.valid" style="color: #ff4d4f; font-weight: 600;">Lỗi</span>
+                      </td>
+                      <td>
+                        <span *ngIf="item.valid">{{ item.type }} - {{ item.userName }} ({{ item.status }} - {{ item.state }})</span>
+                        <span *ngIf="!item.valid" style="color: #ff4d4f;">{{ item.error }}</span>
+                      </td>
+                    </tr>
+                    <tr *ngIf="disposalCheckedAssets.length === 0">
+                      <td colspan="3" style="text-align: center; color: #bfbfbf; padding: 20px 0;">Chưa kiểm tra danh sách thiết bị.</td>
+                    </tr>
+                  </tbody>
+                </nz-table>
+              </div>
+
+              <div style="margin-top: 24px; text-align: right;">
+                <button nz-button nzType="primary" nzSize="large" nzDanger [disabled]="!isDisposalTransferEnabled" (click)="transferDisposalWfd()">
+                  <span nz-icon nzType="swap"></span> Chuyển trạng thái
+                </button>
+              </div>
+            </div>
+          </div>
+        </nz-tab>
+
+        <!-- Tab 2: Manage Disposal Batches -->
+        <nz-tab nzTitle="Quản lý lô thanh lý">
+          <div nz-row [nzGutter]="24">
+            <!-- Left Column: Batches list -->
+            <div nz-col [nzSpan]="10" style="border-right: 1px solid #f0f0f0; padding-right: 16px;">
+              <h5 style="font-weight: 600; margin-bottom: 12px;">Danh sách đợt thanh lý:</h5>
+              <div style="max-height: 450px; overflow-y: auto;">
+                <div *ngFor="let batch of disposalBatches" 
+                     (click)="selectDisposalBatch(batch)"
+                     [style.background]="selectedDisposalBatch?.idDisposal === batch.idDisposal ? '#e6f7ff' : '#fff'"
+                     [style.border-color]="selectedDisposalBatch?.idDisposal === batch.idDisposal ? '#91d5ff' : '#f0f0f0'"
+                     style="padding: 12px; margin-bottom: 8px; border: 1px solid #d9d9d9; border-radius: 6px; cursor: pointer; transition: all 0.3s;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: bold; font-size: 14px; color: #1890ff;">Mã lô: {{ batch.idDisposal }}</span>
+                    <span [style.background]="batch.status ? '#f6ffed' : '#fff7e6'"
+                          [style.color]="batch.status ? '#52c41a' : '#d46b08'"
+                          [style.border-color]="batch.status ? '#b7eb8f' : '#ffd591'"
+                          style="font-size: 11px; padding: 2px 6px; border: 1px solid; border-radius: 4px; font-weight: 600;">
+                      {{ batch.status ? 'ĐÃ THANH LÝ' : 'CHỜ THANH LÝ' }}
+                    </span>
+                  </div>
+                  <div style="color: #8c8c8c; font-size: 12px; margin-bottom: 4px;">
+                    Ngày tạo: {{ batch.startDate | date:'yyyy-MM-dd' }} | Số lượng: <strong>{{ batch.assetCount }} thiết bị</strong>
+                  </div>
+                  <div style="font-size: 13px; color: #434343; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">
+                    Ghi chú: {{ batch.note || 'N/A' }}
+                  </div>
+                </div>
+                <div *ngIf="disposalBatches.length === 0" style="text-align: center; color: #bfbfbf; padding: 40px 0;">Không tìm thấy lô thanh lý nào.</div>
+              </div>
+            </div>
+
+            <!-- Right Column: Batch Details & Confirm Action -->
+            <div nz-col [nzSpan]="14" style="padding-left: 16px;">
+              <div *ngIf="selectedDisposalBatch">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px;">
+                  <h5 style="font-weight: 600; margin: 0; color: #262626;">Chi tiết lô: {{ selectedDisposalBatch.idDisposal }}</h5>
+                  <span style="color: #8c8c8c; font-size: 13px;">Tạo bởi: <strong>{{ selectedDisposalBatch.userID }}</strong></span>
+                </div>
+
+                <div style="max-height: 280px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 4px; background: #fff; margin-bottom: 16px;">
+                  <nz-table #detailsTable [nzData]="disposalBatchDetails" [nzSize]="'small'" [nzFrontPagination]="false" [nzShowPagination]="false">
+                    <thead>
+                      <tr>
+                        <th>Unit Code</th>
+                        <th>Loại</th>
+                        <th>Người dùng hiện tại</th>
+                        <th>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let item of detailsTable.data">
+                        <td><strong>{{ item.unitCode }}</strong></td>
+                        <td>{{ item.assetType }}</td>
+                        <td>{{ item.userName }}</td>
+                        <td>{{ item.statusAsset }}</td>
+                      </tr>
+                    </tbody>
+                  </nz-table>
+                </div>
+
+                <!-- Action section for Waiting For Disposal batches -->
+                <div *ngIf="!selectedDisposalBatch.status" style="background: #fffbe6; padding: 16px; border: 1px solid #ffe58f; border-radius: 8px;">
+                  <h5 style="font-weight: 600; color: #d46b08; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                    <span nz-icon nzType="warning" nzTheme="fill"></span> Xác nhận hoàn tất thanh lý lô này
+                  </h5>
+                  <p style="font-size: 13px; color: #595959; margin-bottom: 12px;">Hành động này sẽ cập nhật trạng thái của tất cả các thiết bị trong lô trên thành <b>Disposed</b> và ngắt kết nối sử dụng.</p>
+                  
+                  <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px;">Cập nhật ghi chú:</label>
+                    <input nz-input [(ngModel)]="disposalConfirmNote" placeholder="Ví dụ: Đã bán thanh lý ve chai / hủy tiêu hủy biên bản ngày..." />
+                  </div>
+
+                  <div style="text-align: right;">
+                    <button nz-button nzType="primary" nzDanger (click)="confirmDisposal()">
+                      <span nz-icon nzType="check-circle"></span> Xác nhận thanh lý
+                    </button>
+                  </div>
+                </div>
+
+                <div style="background: #f6ffed; padding: 16px; border: 1px solid #b7eb8f; border-radius: 8px; display: flex; align-items: center; gap: 8px; color: #52c41a; font-weight: 600;" *ngIf="selectedDisposalBatch.status">
+                  <span nz-icon nzType="check-circle" nzTheme="fill" style="font-size: 18px;"></span> Lô hàng này đã hoàn tất thanh lý.
+                </div>
+              </div>
+
+              <div *ngIf="!selectedDisposalBatch" style="text-align: center; color: #bfbfbf; padding: 80px 0;">Vui lòng chọn một đợt thanh lý ở cột bên trái để xem chi tiết.</div>
+            </div>
+          </div>
+        </nz-tab>
+      </nz-tabs>
+    </ng-container>
+  </nz-modal>
+</div>

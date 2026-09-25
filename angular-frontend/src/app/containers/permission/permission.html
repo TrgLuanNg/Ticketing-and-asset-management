@@ -1,0 +1,120 @@
+<div class="permission-container" style="padding: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div>
+      <h1 style="margin: 0; font-size: 24px; font-weight: bold; color: #1f2937;">User Settings & Permissions</h1>
+      <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">Set and manage North/South allowed areas and detailed action permissions for each user.</p>
+    </div>
+    <button nz-button nzType="primary" (click)="loadData()">
+      <span nz-icon nzType="reload"></span> Refresh
+    </button>
+  </div>
+
+  <!-- Search Bar Row -->
+  <div style="margin-bottom: 20px; max-width: 360px;">
+    <nz-input-group [nzSuffix]="suffixIconSearch">
+      <input type="text" nz-input placeholder="Search user ID or name..." [(ngModel)]="searchText" />
+    </nz-input-group>
+    <ng-template #suffixIconSearch>
+      <span nz-icon nzType="search" style="color: #64748b;"></span>
+    </ng-template>
+  </div>
+
+  <nz-tabs nzType="card">
+    <nz-tab nzTitle="User Allowed Areas">
+      <nz-table #usersTable [nzData]="getFilteredUsers()" [nzLoading]="loading" nzBordered nzSize="middle" [nzPageSize]="20" [nzShowSizeChanger]="true">
+        <thead>
+          <tr>
+            <th nzWidth="20%">User ID</th>
+            <th nzWidth="30%">User Name</th>
+            <th nzWidth="15%" class="text-center">Area South</th>
+            <th nzWidth="15%" class="text-center">Area North</th>
+            <th nzWidth="20%" class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let data of usersTable.data">
+            <td><strong>{{ data.userID }}</strong></td>
+            <td>{{ data.userName || 'N/A' }}</td>
+            <td class="text-center">
+              <label nz-checkbox [ngModel]="hasArea(data, 'South')" (ngModelChange)="toggleArea(data, 'South', $event)"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [ngModel]="hasArea(data, 'North')" (ngModelChange)="toggleArea(data, 'North', $event)"></label>
+            </td>
+            <td class="text-center">
+              <button nz-button nzType="primary" nzSize="small" (click)="saveUserPermission(data)">
+                <span nz-icon nzType="save"></span> Save Areas
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </nz-table>
+    </nz-tab>
+
+    <nz-tab nzTitle="Permissions Control">
+      <nz-table #permsTable [nzData]="getFilteredUsers()" [nzLoading]="loading" nzBordered nzSize="middle" [nzPageSize]="20" [nzShowSizeChanger]="true" [nzScroll]="{ x: '1560px' }">
+        <thead>
+          <tr>
+            <th nzWidth="150px" nzLeft>User ID</th>
+            <th nzWidth="180px">User Name</th>
+            <th class="text-center" nzWidth="100px">Assets Modify</th>
+            <th class="text-center" nzWidth="100px">Assets Del</th>
+            <th class="text-center" nzWidth="110px">Dept Modify</th>
+            <th class="text-center" nzWidth="100px">Dept Del</th>
+            <th class="text-center" nzWidth="110px">Type Modify</th>
+            <th class="text-center" nzWidth="100px">Type Del</th>
+            <th class="text-center" nzWidth="110px">User Manager</th>
+            <th class="text-center" nzWidth="90px">Disposal</th>
+            <th class="text-center" nzWidth="130px">Perm Approval</th>
+            <th class="text-center" nzWidth="120px">Allow See All</th>
+            <th class="text-center" nzWidth="100px" nzRight>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let data of permsTable.data">
+            <td nzLeft><strong>{{ data.userID }}</strong></td>
+            <td>{{ data.userName || 'N/A' }}</td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).assetsModify"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).assetsDel"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).departmentModify"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).departmentDel"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).typeModify"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).typeDel"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).userManager"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).disposal"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).permissionApproval"></label>
+            </td>
+            <td class="text-center">
+              <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).allowSeeAllFromAllowedAreas"></label>
+            </td>
+            <td class="text-center" nzRight>
+              <button nz-button nzType="primary" nzSize="small" (click)="saveUserPermissionControl(data.userID)">
+                <span nz-icon nzType="save"></span> Save
+              </button>
+              <button nz-button nzType="default" nzSize="small" nzDanger (click)="resetPermissions(data.userID)" style="margin-left: 4px;">
+                <span nz-icon nzType="undo"></span> Reset
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </nz-table>
+    </nz-tab>
+  </nz-tabs>
+</div>

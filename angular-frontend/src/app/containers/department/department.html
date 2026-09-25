@@ -1,0 +1,100 @@
+<div class="container department-container">
+  <div class="toolbar-wrapper">
+    <div class="toolbar-left">
+      <button nz-button nzType="primary" (click)="onAdd()" *ngIf="hasPermission('DepartmentModify')">
+        <span nz-icon nzType="plus"></span>Add Department
+      </button>
+      <button nz-button nzType="default" (click)="onEdit()" [disabled]="!selectedDept" *ngIf="hasPermission('DepartmentModify')">
+        <span nz-icon nzType="edit"></span>Edit
+      </button>
+
+    </div>
+    
+    <div class="toolbar-right">
+      <nz-input-group [nzSuffix]="suffixIconSearch">
+        <input type="text" nz-input placeholder="" [(ngModel)]="searchText" (keyup.enter)="onSearch(searchText)" (ngModelChange)="searchText === '' ? onSearch('') : null" />
+      </nz-input-group>
+      <ng-template #suffixIconSearch>
+        <span nz-icon nzType="search"></span>
+      </ng-template>
+    </div>
+  </div>
+
+  <div class="grid-card-table">
+    <nz-table #basicTable [nzData]="departments" [nzLoading]="loading" nzBordered nzSize="middle" [nzPageSize]="10">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Type / Classification</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let data of basicTable.data" (click)="onRowSelect(data)" [class.selected]="selectedDept?.id === data.id" class="clickable-row">
+          <td>{{ data.id }}</td>
+          <td>{{ data.name }}</td>
+          <td>{{ data.description }}</td>
+          <td>{{ getTypeLabel(data) }}</td>
+        </tr>
+      </tbody>
+    </nz-table>
+  </div>
+</div>
+
+<nz-modal
+  [(nzVisible)]="isVisible"
+  [nzTitle]="modalTitle"
+  (nzOnCancel)="handleCancel()"
+  (nzOnOk)="handleOk()"
+  [nzOkLoading]="isOkLoading"
+  nzWidth="600px"
+>
+  <ng-container *nzModalContent>
+    <form nz-form [formGroup]="validateForm" (ngSubmit)="handleOk()" [nzLayout]="'vertical'">
+      <nz-form-item>
+        <nz-form-label nzRequired nzFor="id">ID</nz-form-label>
+        <nz-form-control nzErrorTip="Please input ID!">
+          <input nz-input formControlName="id" id="id" placeholder="e.g. DEPT-IT" />
+        </nz-form-control>
+      </nz-form-item>
+      
+      <nz-form-item>
+        <nz-form-label nzRequired nzFor="name">Name</nz-form-label>
+        <nz-form-control nzErrorTip="Please input Name!">
+          <input nz-input formControlName="name" id="name" placeholder="e.g. Information Technology" />
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-label nzFor="description">Description</nz-form-label>
+        <nz-form-control>
+          <textarea nz-input formControlName="description" id="description" [nzAutosize]="{ minRows: 2, maxRows: 4 }" placeholder="Optional description..."></textarea>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-label nzRequired>Classification Type</nz-form-label>
+        <nz-form-control>
+          <nz-radio-group formControlName="type" class="radio-grid">
+            <label nz-radio nzValue="Department">Department</label>
+            <label nz-radio nzValue="Office">Office</label>
+            <label nz-radio nzValue="Company">Company</label>
+            <label nz-radio nzValue="Vendor">Vendor</label>
+            <label nz-radio nzValue="Division">Division</label>
+            <label nz-radio nzValue="GroupDivision">Group Division</label>
+          </nz-radio-group>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-label nzFor="parentId">Parent</nz-form-label>
+        <nz-form-control>
+          <nz-select formControlName="parentId" nzShowSearch nzAllowClear nzPlaceHolder="Select parent (Name)">
+            <nz-option *ngFor="let item of parentOptions" [nzLabel]="item.name + ' (' + item.id + ')'" [nzValue]="item.id"></nz-option>
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+    </form>
+  </ng-container>
+</nz-modal>

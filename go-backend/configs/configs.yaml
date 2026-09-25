@@ -1,0 +1,32 @@
+server:
+  port: 44318
+  mode: "debug"
+
+database:
+  driver: "postgres"
+  postgres:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "dgnchitg"
+    dbname: "itam_db"
+    sslmode: "disable"
+  sqlserver:
+    host: "172.19.217.129"
+    port: 1433
+    user: "sa"
+    password: "123456a@"
+    dbname: "ITAM_UAT"
+
+jwt:
+  secret_key: "YusenLogisticsVietnamITAMSecretKey2026"
+  expiration_minutes: 120
+
+sso:
+  host: "https://127.0.0.1:9091"
+  client_id: "itam-client"
+  secret_key: "itam_secret_key_2026"
+
+auto_sync:
+  enabled: true
+  cron_schedule: "0 0 * * *"

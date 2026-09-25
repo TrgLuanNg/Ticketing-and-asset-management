@@ -1,0 +1,112 @@
+<div class="statistics-container">
+  <!-- Top Filter Row -->
+  <div class="dashboard-header">
+    <div class="title-section">
+      <h1 class="page-title">ITAM Statistics Dashboard</h1>
+      <p class="subtitle"></p>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">From:</span>
+      <nz-select [(ngModel)]="selectedFromDate" (ngModelChange)="onFilterChange()" class="month-select" nzPlaceHolder="Select date">
+        <nz-option *ngFor="let option of monthOptions" [nzValue]="option.value" [nzLabel]="option.label"></nz-option>
+      </nz-select>
+      <span class="filter-tip">to Now</span>
+    </div>
+  </div>
+
+  <nz-spin [nzSpinning]="loading">
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+      <!-- Left Column: KPI Cards -->
+      <div class="kpi-column">
+        <!-- Total Card -->
+        <div class="kpi-card total-card" (click)="navigateToAssets()">
+          <div class="kpi-value">{{ totalAssets }}</div>
+          <div class="kpi-label">Total</div>
+        </div>
+        
+        <!-- Bottom Row: Transfer & New PC side-by-side -->
+        <div class="kpi-subrow">
+          <div class="kpi-card transfer-card" (click)="navigateToAssets()">
+            <div class="kpi-value">{{ transferPC }}</div>
+            <div class="kpi-label">Transfer PC</div>
+          </div>
+          <div class="kpi-card new-card" (click)="navigateToAssets('new')">
+            <div class="kpi-value">{{ newPC }}</div>
+            <div class="kpi-label">New PC</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Middle Column: 2x2 Donuts Grid -->
+      <div class="donuts-column">
+        <div class="donuts-grid">
+          <!-- By Group -->
+          <div class="chart-box">
+            <button nz-button nzType="text" nzSize="small" class="chart-action-btn" (click)="openBarChartModal('Group', groupData)">
+              <span nz-icon nzType="table"></span>
+            </button>
+            <div class="chart-title">By Group</div>
+            <div #groupChart class="chart-container"></div>
+          </div>
+
+          <!-- By Region -->
+          <div class="chart-box">
+            <button nz-button nzType="text" nzSize="small" class="chart-action-btn" (click)="openBarChartModal('Region', regionData)">
+              <span nz-icon nzType="table"></span>
+            </button>
+            <div class="chart-title">By Region</div>
+            <div #regionChart class="chart-container"></div>
+          </div>
+
+          <!-- By Division -->
+          <div class="chart-box">
+            <button nz-button nzType="text" nzSize="small" class="chart-action-btn" (click)="openBarChartModal('Division', divisionData)">
+              <span nz-icon nzType="table"></span>
+            </button>
+            <div class="chart-title">By Division</div>
+            <div #divisionChart class="chart-container"></div>
+          </div>
+
+          <!-- By PC Type -->
+          <div class="chart-box">
+            <button nz-button nzType="text" nzSize="small" class="chart-action-btn" (click)="openBarChartModal('Assigned/Idle', stateData)">
+              <span nz-icon nzType="table"></span>
+            </button>
+            <div class="chart-title">Assigned/Idle</div>
+            <div #stateChart class="chart-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: EOL PC Treemap -->
+      <div class="eol-column">
+        <div class="chart-box eol-box">
+          <div class="chart-title eol-title">EOL PC</div>
+          <div #eolChart class="chart-container eol-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Section: Long Bar Graph -->
+    <div class="purchased-row">
+      <div class="chart-box purchased-box">
+        <div class="chart-title">By Purchased (>=2018)</div>
+        <div #purchasedChart class="chart-container purchased-container"></div>
+      </div>
+    </div>
+  </nz-spin>
+
+  <!-- Modal to show Bar Chart -->
+  <nz-modal
+    [(nzVisible)]="isModalVisible"
+    [nzTitle]="modalTitle"
+    [nzFooter]="null"
+    (nzOnCancel)="handleModalClose()"
+    [nzWidth]="modalWidth"
+  >
+    <ng-container *nzModalContent>
+      <div #modalBarChart class="modal-chart-container" style="width: 100%; height: 400px;"></div>
+    </ng-container>
+  </nz-modal>
+</div>

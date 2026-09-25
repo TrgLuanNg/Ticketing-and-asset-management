@@ -1,0 +1,51 @@
+.employee-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0;
+}
+
+.toolbar-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbar-left {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toolbar-right {
+  width: 320px;
+}
+
+.grid-card-table {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  padding: 8px;
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover > td {
+    background-color: rgba(24, 144, 255, 0.04) !important;
+  }
+  
+  &.selected {
+    background-color: rgba(24, 144, 255, 0.09) !important;
+    
+    > td {
+      background-color: transparent !important;
+      font-weight: 600;
+    }
+  }
+}

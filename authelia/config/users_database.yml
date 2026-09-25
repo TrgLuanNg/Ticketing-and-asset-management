@@ -1,0 +1,16 @@
+users:
+  admin:
+    displayname: "Administrator"
+    password: "$pbkdf2-sha512$310000$TT1GKrI8sBcp8e476v9Lew$7UmYB0HAAp3mhR.3EtGAL5hR87XI5oMJZIXDCQ9WPMG9pQyacH6bSHYgRX2s5r0bTAVX7o0QeHI8LWrxuPl3/A"
+    email: admin@example.com
+    groups:
+      - admins
+      - users
+
+  user1:
+    displayname: "User One"
+    password: "$pbkdf2-sha512$310000$TT1GKrI8sBcp8e476v9Lew$7UmYB0HAAp3mhR.3EtGAL5hR87XI5oMJZIXDCQ9WPMG9pQyacH6bSHYgRX2s5r0bTAVX7o0QeHI8LWrxuPl3/A"
+    email: user1@example.com
+    groups:
+      - users
+      - admins

@@ -1,0 +1,951 @@
+<div class="asset-detail-page" style="margin-top: -20px;">
+  <ng-container *ngIf="isDetailDrawerVisible && selectedAsset">
+    <!-- Breadcrumbs -->
+    <div class="flex items-center gap-xs" style="margin-bottom: 16px; align-items: center;">
+      <a (click)="closeDetailDrawer()" style="cursor: pointer; text-decoration: none; font-size: 26px; font-weight: 700; color: #000000; margin: 0; line-height: 1.2;">Asset management</a>
+      <span class="material-symbols-outlined text-[20px]" style="color: #000000; font-weight: 700; padding: 0 4px; display: inline-flex; align-items: center;">chevron_right</span>
+      <span style="font-size: 26px; font-weight: 700; color: #000000; margin: 0; line-height: 1.2;">{{ selectedAsset.unitCode }}</span>
+    </div>
+
+    <!-- Main Detail Card -->
+    <div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex-1 flex flex-col overflow-hidden">
+      <!-- Card Header / Tabs & Actions -->
+      <div class="flex justify-between items-center px-lg py-sm border-b border-outline-variant" style="padding: 12px 24px; background: #ffffff;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button nz-button nzType="default" (click)="closeDetailDrawer()" style="display: inline-flex; align-items: center; justify-content: center;">
+            <span nz-icon nzType="arrow-left"></span>Back to List
+          </button>
+          
+          <span class="font-headline-md text-headline-md text-on-surface" style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            Unit Code: <strong style="color: #1890ff;">{{ selectedAsset.unitCode }}</strong>
+            
+            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold border"
+                  [ngClass]="getStatusBadgeClass(selectedAsset.status)" style="padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-left: 8px;">
+              {{ selectedAsset.status || 'No Status' }}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div style="padding: 24px; background: #ffffff;">
+        
+        <nz-tabs nzType="card" class="modern-tabs" [nzTabBarExtraContent]="tabActions" [nzSelectedIndex]="activeDetailTabIndex" (nzSelectedIndexChange)="onTabIndexChange($event)">
+          <ng-template #tabActions>
+            <div style="display: flex; gap: 8px; align-items: center; padding-right: 16px;">
+              <!-- Detail Tab Actions (Index 0) -->
+              <ng-container *ngIf="activeDetailTabIndex === 0">
+                <button *ngIf="isEditingDetails" nz-button nzType="primary" (click)="saveEditDetails()">
+                  Save
+                </button>
+                <button *ngIf="isEditingDetails" nz-button nzType="default" (click)="cancelEditDetails()">
+                  <span nz-icon nzType="close"></span>Cancel
+                </button>
+                <button *ngIf="!isEditingDetails && hasPermission('AssetsModify')" nz-button nzType="default" class="btn-refresh" (click)="startEditDetails()">
+                  <span nz-icon nzType="edit"></span>Update
+                </button>
+
+                <button *ngIf="!isViewer()" nz-button nzType="default" class="btn-print" (click)="onPrintUC()">
+                  <span nz-icon nzType="printer"></span>Print Tag (QR)
+                </button>
+              </ng-container>
+
+              <!-- Report Tab Actions (Index 1) -->
+              <ng-container *ngIf="activeDetailTabIndex === 1">
+                <button nz-button *ngIf="!isViewer()" style="border-color: #1890ff; color: #1890ff; background-color: #ffffff;" (click)="onTransferState()">
+                  <span nz-icon nzType="swap"></span>Transfer State
+                </button>
+                <button nz-button *ngIf="!isViewer()" style="background-color: #faad14; border-color: #faad14; color: #ffffff;" (click)="onProblemReport()">Report Issue
+                </button>
+              </ng-container>
+            </div>
+          </ng-template>
+          <!-- Tab 1: Detail -->
+          <nz-tab nzTitle="Detail">
+            <div class="tab-scroll-content" style="padding: 24px; background: #f8f9fb;">
+              <div style="display: grid; grid-template-columns: 4fr 5fr 3fr; gap: 24px;">
+
+                <!-- Column 1: Primary Details & Assignment -->
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                  <!-- Primary Details Card -->
+                  <section style="background: #ffffff; border: 1px solid #06183D; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                      <h2 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.05em;">Primary Details</h2>
+                    </div>
+                    <form nz-form [nzLayout]="'vertical'" [formGroup]="assetForm">
+                      <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Asset Type</span>
+                          <nz-form-control nzErrorTip="Please select Type!">
+                            <nz-select class="custom-select" formControlName="type" nzShowSearch nzAllowClear nzPlaceHolder="Select type" style="width: 100%;">
+                              <nz-option *ngFor="let item of typeList" [nzLabel]="item.typeName + ' (' + item.type + ')'" [nzValue]="item.type"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Unit Code</span>
+                          <nz-form-control nzErrorTip="Please input Unit Code!">
+                            <input nz-input formControlName="unitCode" placeholder="Unit code" style="font-weight: 600; color: #003d9b;" />
+                          </nz-form-control>
+                        </div>
+                      </div>
+                    </form>
+                    <form nz-form [nzLayout]="'vertical'" [formGroup]="specForm" style="margin-top: 16px;">
+                      <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                          <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 12px; color: #434654;">Brand</span>
+                            <nz-form-control>
+                              <input nz-input formControlName="brand" placeholder="Brand" style="font-weight: 600;" />
+                            </nz-form-control>
+                          </div>
+                          <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 12px; color: #434654;">Model</span>
+                            <nz-form-control>
+                              <input nz-input formControlName="model" placeholder="Model" />
+                            </nz-form-control>
+                          </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Serial Number</span>
+                          <nz-form-control>
+                            <input nz-input formControlName="serial" placeholder="Serial" style="font-family: monospace; background: #edeef0; border-radius: 4px;" />
+                          </nz-form-control>
+                        </div>
+                      </div>
+                    </form>
+                  </section>
+
+                  <!-- Assignment Card -->
+                  <section style="background: #ffffff; border: 1px solid #06183D; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                      <h2 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.05em;">Assignment</h2>
+                      <span nz-icon nzType="user" style="color: #0c56d0; font-size: 20px;"></span>
+                    </div>
+                    <form nz-form [nzLayout]="'vertical'" [formGroup]="assetForm">
+                      <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 50%; background: #d4e0f8; display: flex; align-items: center; justify-content: center; color: #003d9b; font-weight: bold; font-size: 16px; flex-shrink: 0; margin-top: 4px;">
+                          {{ (assetFormVal.userName || 'N')[0] | uppercase }}
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 12px; flex: 1;">
+                          <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 12px; color: #434654; font-weight: 600;">User Name</span>
+                            <nz-form-control style="width: 100%;">
+                              <input nz-input class="custom-select" formControlName="userName" placeholder="User Name" style="width: 100%; font-weight: 600; color: #000000;" />
+                            </nz-form-control>
+                          </div>
+
+                          <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 12px; color: #434654; font-weight: 600;">Email</span>
+                            <nz-form-control style="width: 100%;">
+                              <input nz-input class="custom-select" formControlName="email" placeholder="Email" style="width: 100%; color: #000000;" />
+                            </nz-form-control>
+                          </div>
+                        </div>
+                      </div>
+                      <div style="padding-top: 16px; border-top: 1px solid #06183D; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; color: #434654;">HR Code</span>
+                        <nz-form-control style="max-width: 150px;">
+                          <input nz-input class="custom-select" formControlName="hrCode" placeholder="HR code" style="font-size: 12px; font-weight: 600; background: rgba(0,82,204,0.08); color: #003d9b; border-radius: 12px; text-align: center; border: none; padding: 4px 12px;" />
+                        </nz-form-control>
+                      </div>
+                    </form>
+                  </section>
+                </div>
+
+                <!-- Column 2: Location & Tech Specs -->
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                  <!-- Location & Department Card -->
+                  <section style="background: #ffffff; border: 1px solid #06183D; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                      <h2 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.05em;">Location & Department</h2>
+                    </div>
+                    <form nz-form [nzLayout]="'vertical'" [formGroup]="assetForm">
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Company</span>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="company" nzShowSearch nzAllowClear nzPlaceHolder="Select company" style="width: 100%;">
+                              <nz-option *ngFor="let item of companyList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Department</span>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="department" nzShowSearch nzAllowClear nzPlaceHolder="Select department" style="width: 100%;">
+                              <nz-option *ngFor="let item of getFilteredDepartments('asset')" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Office</span>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="office" nzShowSearch nzAllowClear nzPlaceHolder="Select office" style="width: 100%;">
+                              <nz-option *ngFor="let item of officeList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Division</span>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="division" nzShowSearch nzAllowClear nzPlaceHolder="Select division" style="width: 100%;">
+                              <nz-option *ngFor="let item of getFilteredDivisions('asset')" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Area</span>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="area" nzAllowClear nzPlaceHolder="Select area" style="width: 100%;">
+                              <nz-option *ngFor="let area of allowedAreas" [nzValue]="area" [nzLabel]="area"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 12px; color: #434654;">Group Department</span>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="groupDep" nzShowSearch nzAllowClear nzPlaceHolder="Select group department" style="width: 100%;">
+                              <nz-option *ngFor="let item of groupDepList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+                      </div>
+                    </form>
+                  </section>
+
+                  <!-- Tech Specs & Finance Card -->
+                  <section style="background: #ffffff; border: 1px solid #06183D; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <!-- Header -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid #e0e3e5; padding-bottom: 8px;">
+                      <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #45464e; margin: 0; letter-spacing: 0.05em;">TECH SPECS</h2>
+                      <span nz-icon nzType="setting" style="color: #0353cd; font-size: 20px; cursor: pointer;"></span>
+                    </div>
+
+                    <!-- Viewing Selector Tabs -->
+                    <div style="display: flex; border-bottom: 1px solid #e0e3e5; margin-bottom: 24px; gap: 16px; align-items: center; flex-wrap: wrap;">
+                      <button 
+                        type="button"
+                        (click)="onSpecTargetChange('main')"
+                        [style.border-bottom-color]="activeSpecTarget === 'main' ? '#06183D' : 'transparent'"
+                        [style.color]="activeSpecTarget === 'main' ? '#191c1e' : '#45464e'"
+                        [style.font-weight]="activeSpecTarget === 'main' ? '700' : '500'"
+                        style="padding-bottom: 8px; border-top: none; border-left: none; border-right: none; border-bottom-width: 2px; border-bottom-style: solid; background: transparent; cursor: pointer; transition: all 0.2s;">
+                        Main Asset
+                      </button>
+
+                      <ng-container *ngFor="let sub of loadedSubAssets; trackBy: trackByUnitCode">
+                        <button 
+                          type="button"
+                          (click)="onSpecTargetChange(sub.unitCode)"
+                          [style.border-bottom-color]="activeSpecTarget === sub.unitCode ? '#06183D' : 'transparent'"
+                          [style.color]="activeSpecTarget === sub.unitCode ? '#191c1e' : '#45464e'"
+                          [style.font-weight]="activeSpecTarget === sub.unitCode ? '700' : '500'"
+                          style="padding-bottom: 8px; border-top: none; border-left: none; border-right: none; border-bottom-width: 2px; border-bottom-style: solid; background: transparent; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;">
+                          <span>{{ getSubAssetTabLabel(sub) }}</span>
+                          <span 
+                            *ngIf="isEditingDetails" 
+                            (click)="clearSubAsset(sub, $event)" 
+                            title="Clear sub-asset link" 
+                            style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #ef4444; color: #ffffff; font-size: 14px; font-weight: bold; line-height: 1; cursor: pointer; border: none; margin-left: 2px;">
+                            -
+                          </span>
+                        </button>
+                      </ng-container>
+
+                      <!-- '+' Tab button to add sub-asset (Appears right next to last sub-asset when isEditingDetails is true) -->
+                      <button 
+                        *ngIf="isEditingDetails" 
+                        type="button"
+                        (click)="openAddSubAssetModal()"
+                        title="Add Sub-Asset"
+                        style="padding: 2px 10px; border: 1px dashed #0353cd; background: #e6f7ff; color: #0353cd; border-radius: 4px; font-weight: bold; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; height: 28px;">
+                        +
+                      </button>
+                    </div>
+
+                    <!-- Form Grid -->
+                    <form nz-form [nzLayout]="'vertical'" [formGroup]="specForm">
+                      <div *ngIf="activeDeviceConfig" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; margin-bottom: 20px;">
+                        <ng-container *ngFor="let num of [1,2,3,4,5,6,7,8,9]">
+                          <div *ngIf="activeDeviceConfig['detail' + num] && activeDeviceConfig['detail' + num] !== 'NONE'">
+                            <label class="form-label-custom">{{ activeDeviceConfig['detail' + num] }}</label>
+                            <nz-form-control>
+                              <nz-select class="custom-select" [formControlName]="'detail' + num" nzShowSearch nzAllowClear [nzPlaceHolder]="'Select ' + activeDeviceConfig['detail' + num]" style="width: 100%;">
+                                <nz-option *ngFor="let opt of detailOptions['detail' + num]" [nzLabel]="opt.techSpecs" [nzValue]="opt.id"></nz-option>
+                              </nz-select>
+                            </nz-form-control>
+                          </div>
+                        </ng-container>
+                      </div>
+
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px;">
+                        <div>
+                          <label class="form-label-custom">Status</label>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="status" nzShowSearch nzAllowClear nzPlaceHolder="Select status" style="width: 100%;">
+                              <nz-option nzValue="GOOD" nzLabel="Good"></nz-option>
+                              <nz-option nzValue="NORMAL" nzLabel="Normal"></nz-option>
+                              <nz-option nzValue="BAD" nzLabel="Bad"></nz-option>
+                              <nz-option nzValue="BROKEN" nzLabel="Broken"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+
+                        <div>
+                          <label class="form-label-custom">State</label>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="state" nzShowSearch nzAllowClear nzPlaceHolder="Select state" style="width: 100%;">
+                              <nz-option *ngFor="let item of stateList" [nzLabel]="item.state" [nzValue]="item.id"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+
+                        <div>
+                          <label class="form-label-custom">Vendor</label>
+                          <nz-form-control>
+                            <nz-select class="custom-select" formControlName="vendor" nzShowSearch nzAllowClear nzPlaceHolder="Select vendor" style="width: 100%;">
+                              <nz-option *ngFor="let item of vendorList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                            </nz-select>
+                          </nz-form-control>
+                        </div>
+
+                        <div>
+                          <label class="form-label-custom">Warranty (Months)</label>
+                          <nz-form-control>
+                            <input class="form-input-custom" formControlName="warrantyExpiration" type="number" placeholder="Months" />
+                          </nz-form-control>
+                        </div>
+
+                        <div>
+                          <label class="form-label-custom">Purchase Value</label>
+                          <nz-form-control>
+                            <input class="form-input-custom font-bold text-teal-value" formControlName="purchasedValue" placeholder="Purchased value" />
+                          </nz-form-control>
+                        </div>
+
+                        <div>
+                          <label class="form-label-custom">Wattage (W)</label>
+                          <nz-form-control>
+                            <input class="form-input-custom" formControlName="watt" placeholder="Watt" />
+                          </nz-form-control>
+                        </div>
+                      </div>
+                    </form>
+                  </section>
+
+                </div>
+
+                <!-- Column 3: Timeline & Status Checks -->
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                  <!-- Timeline Card -->
+                  <section style="background: #ffffff; border: 1px solid #06183D; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                      <h2 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.05em;">Timeline</h2>
+                      <span nz-icon nzType="calendar" style="color: #0c56d0; font-size: 20px;"></span>
+                    </div>
+                    <form nz-form [nzLayout]="'vertical'" [formGroup]="assetForm">
+                      <div style="display: flex; flex-direction: column; gap: 20px; position: relative; padding-left: 32px;">
+                        <div style="position: absolute; left: 11px; top: 8px; bottom: 8px; width: 2px; background: #edeef0;"></div>
+                        <div style="position: relative; display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 11px; font-weight: 500; color: #434654;">Purchased Date</span>
+                          <nz-form-control>
+                            <nz-date-picker class="custom-select" formControlName="purchasedDate" style="width: 100%;"></nz-date-picker>
+                          </nz-form-control>
+                        </div>
+                        <div style="position: relative; display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 11px; font-weight: 500; color: #434654;">Usage Date</span>
+                          <nz-form-control>
+                            <nz-date-picker class="custom-select" formControlName="usageDate" style="width: 100%;"></nz-date-picker>
+                          </nz-form-control>
+                        </div>
+                        <div style="position: relative; display: flex; flex-direction: column; gap: 4px;">
+                          <span style="font-size: 11px; font-weight: 500; color: #434654;">Record Date</span>
+                          <nz-form-control>
+                            <nz-date-picker class="custom-select" formControlName="recordDate" style="width: 100%;"></nz-date-picker>
+                          </nz-form-control>
+                        </div>
+                      </div>
+                    </form>
+                  </section>
+
+                  <!-- Status Checks Card -->
+                  <section style="background: #ffffff; border: 1px solid #06183D; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                      <h2 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.05em;">Status Checks</h2>
+                      <span nz-icon nzType="check-circle" style="color: #0c56d0; font-size: 20px;"></span>
+                    </div>
+                    <form nz-form [formGroup]="assetForm">
+                      <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="padding: 10px 12px; background: #f8f9fb; border: 1px solid #06183D; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          <label nz-checkbox formControlName="ad" nzDisabled>AD Status</label>
+                          <span *ngIf="selectedAsset?.adOS" style="font-size: 10px; color: #000000; font-weight: 500;">{{ selectedAsset.adOS }}</span>
+                        </div>
+                        <div style="padding: 10px 12px; background: #f8f9fb; border: 1px solid #06183D; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          <label nz-checkbox formControlName="me" nzDisabled>ME Status</label>
+                          <span *ngIf="selectedAsset?.meTime" style="font-size: 10px; color: #000000; font-weight: 500;">{{ selectedAsset.meTime }}</span>
+                        </div>
+                        <div style="padding: 10px 12px; background: #f8f9fb; border: 1px solid #06183D; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                          <label nz-checkbox formControlName="tm" nzDisabled>TM Status</label>
+                          <span *ngIf="selectedAsset?.tmTime" style="font-size: 10px; color: #000000; font-weight: 500;">{{ selectedAsset.tmTime }}</span>
+                        </div>
+                      </div>
+                    </form>
+                  </section>
+                </div>
+
+              </div>
+
+              <!-- Full-Width Notes -->
+              <div style="margin-top: 24px;">
+                <section style="background: #ffffff; border: 1px solid #06183D; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                    <h2 style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #535f73; margin: 0; letter-spacing: 0.05em;">Additional Notes</h2>
+                    <span nz-icon nzType="file-text" style="color: #0c56d0; font-size: 20px;"></span>
+                  </div>
+                  <form nz-form [nzLayout]="'vertical'" [formGroup]="assetForm">
+                    <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; border: 1px solid #06183D;">
+                      <nz-form-control>
+                        <textarea nz-input formControlName="notes" placeholder="Notes & technical details..." [nzAutosize]="{ minRows: 4, maxRows: 8 }" style="background: transparent; border: none; font-style: italic; line-height: 1.6;"></textarea>
+                      </nz-form-control>
+                    </div>
+                  </form>
+                </section>
+              </div>
+
+            </div>
+          </nz-tab>
+
+          <!-- Tab 2: Report (Handover & Issues) -->
+          <nz-tab nzTitle="Report">
+            <div class="tab-scroll-content">
+              <div nz-row [nzGutter]="24">
+                <div nz-col [nzLg]="12" [nzXs]="24">
+                  <div class="card-inner">
+                    <div class="card-inner-header">
+                      <h3>Handover History</h3>
+                      <button nz-button nzType="default" nzSize="small" (click)="onViewHandover()" [disabled]="!selectedHandover">
+                        <span nz-icon nzType="file-pdf"></span>View Form
+                      </button>
+                    </div>
+                    <div class="table-container">
+                      <nz-table #handoverTable [nzData]="handoverRowData" nzBordered nzSize="middle" [nzPageSize]="5">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Create Date</th>
+                            <th>User Created</th>
+                            <th>Form</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let data of handoverTable.data" (click)="onSelectHandover(data)" [class.selected]="selectedHandover?.id === data.id" class="clickable-row">
+                            <td>{{ data.id }}</td>
+                            <td>{{ data.handoverDate | date:'yyyy-MM-dd' }}</td>
+                            <td>{{ data.userCreated }}</td>
+                            <td>{{ data.form }}</td>
+                          </tr>
+                        </tbody>
+                      </nz-table>
+                    </div>
+                  </div>
+                </div>
+                
+                <div nz-col [nzLg]="12" [nzXs]="24">
+                  <div class="card-inner">
+                    <div class="card-inner-header">
+                      <h3>Problem Reports</h3>
+                      <div class="header-action-group" style="display: flex; gap: 8px;">
+                        <button nz-button nzType="default" nzSize="small" (click)="onModifyProblem()" [disabled]="!selectedProblem" *ngIf="!isViewer()">
+                          <span nz-icon nzType="edit"></span>Modify Problem
+                        </button>
+                        <button nz-button nzType="default" nzSize="small" (click)="onViewProblem()" [disabled]="!selectedProblem">
+                          <span nz-icon nzType="file-pdf"></span>View Form
+                        </button>
+                      </div>
+                    </div>
+                    <div class="table-container">
+                      <nz-table #problemTable [nzData]="problemRowData" nzBordered nzSize="middle" [nzPageSize]="5">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Create Date</th>
+                            <th>User Created</th>
+                            <th>Summary</th>
+                            <th>Jira Ticket</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let data of problemTable.data" (click)="onSelectProblem(data)" [class.selected]="selectedProblem?.id === data.id" class="clickable-row">
+                            <td>{{ data.id }}</td>
+                            <td>{{ data.reportDate | date:'yyyy-MM-dd' }}</td>
+                            <td>{{ data.userCreated }}</td>
+                            <td>{{ data.problemSummary }}</td>
+                            <td>{{ data.jiraCode }}</td>
+                          </tr>
+                        </tbody>
+                      </nz-table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </nz-tab>
+
+          <!-- Tab 3: Log (Audit Logs) -->
+          <nz-tab nzTitle="Log" *ngIf="!isViewer()">
+            <div class="tab-scroll-content">
+              <!-- Tab 3: Log (Audit Logs) -->
+              <div class="log-filter-bar" style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; padding: 16px 24px 0;">
+                
+                <div class="filter-item" style="display: flex; align-items: center; gap: 8px;">
+                  <span class="filter-label" style="font-weight: 500; color: #434654;">From:</span>
+                  <nz-date-picker [(ngModel)]="logFromDate" class="date-picker"></nz-date-picker>
+                </div>
+                
+                <div class="filter-item" style="display: flex; align-items: center; gap: 8px;">
+                  <span class="filter-label" style="font-weight: 500; color: #434654;">To:</span>
+                  <nz-date-picker [(ngModel)]="logToDate" class="date-picker"></nz-date-picker>
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                  <button nz-button nzType="primary" (click)="onReviewLogs()">
+                    <span nz-icon nzType="reload"></span>Filter Logs
+                  </button>
+                  <button nz-button nzType="default" (click)="onExportLogs()">
+                    <span nz-icon nzType="download"></span>Export Logs
+                  </button>
+                </div>
+                
+              </div>
+              
+              <div class="table-container log-table-margin">
+                <nz-table #logTable [nzData]="logRowData" nzBordered nzSize="middle" [nzPageSize]="10">
+                  <thead>
+                    <tr>
+                      <th>Date Modified</th>
+                      <th>User ID</th>
+                      <th>Action</th>
+                      <th>Logs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let data of logTable.data">
+                      <td>{{ data.dateModified | date:'yyyy-MM-dd HH:mm:ss' }}</td>
+                      <td><strong>{{ data.userID }}</strong></td>
+                      <td>{{ data.action }}</td>
+                      <td>{{ data.actionLogs }}</td>
+                    </tr>
+                  </tbody>
+                </nz-table>
+              </div>
+            </div>
+          </nz-tab>
+
+          <!-- Tab 4: Software -->
+          <nz-tab nzTitle="Software" *ngIf="isLtpOrDpc()" (nzClick)="onSoftwareTabSelect()">
+            <div class="tab-scroll-content">
+              <div class="card-inner">
+                <div class="card-inner-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                  <h3 style="margin: 0;">Danh sách phần mềm (Installed Software)</h3>
+                  <div class="header-action-group" style="display: flex; gap: 8px;">
+                    <button nz-button nzType="primary" nzSize="small" (click)="onAddSoftware()" *ngIf="!isViewer()">
+                      <span nz-icon nzType="plus"></span>Thêm
+                    </button>
+                    <button nz-button nzType="default" nzSize="small" (click)="onEditSoftware()" [disabled]="!selectedSoftware" *ngIf="!isViewer()">
+                      <span nz-icon nzType="edit"></span>Sửa
+                    </button>
+                    <button nz-button nzType="default" nzDanger nzSize="small" (click)="onDeleteSoftware()" [disabled]="!selectedSoftware" *ngIf="!isViewer()">
+                      <span nz-icon nzType="delete"></span>Xóa
+                    </button>
+                  </div>
+                </div>
+
+                <div class="table-container">
+                  <nz-table
+                    #softwareTable
+                    [nzData]="softwareRowData"
+                    [nzLoading]="isSoftwareLoading"
+                    nzBordered
+                    nzSize="middle"
+                    [nzPageSize]="10"
+                  >
+                    <thead>
+                      <tr>
+                        <th nzWidth="80px">ID</th>
+                        <th>Tên phần mềm (Software Name)</th>
+                        <th>Phiên bản (Version)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        *ngFor="let data of softwareTable.data"
+                        (click)="onSelectSoftware(data)"
+                        [class.selected]="selectedSoftware?.id === data.id"
+                        class="clickable-row"
+                      >
+                        <td>{{ data.id }}</td>
+                        <td><strong>{{ data.software }}</strong></td>
+                        <td>{{ data.version || 'N/A' }}</td>
+                      </tr>
+                    </tbody>
+                  </nz-table>
+                </div>
+              </div>
+            </div>
+          </nz-tab>
+        </nz-tabs>
+      </div>
+    </div>
+  </ng-container>
+
+
+
+  <!-- Print Modal -->
+  <nz-modal [(nzVisible)]="isPrintVisible" nzTitle="Asset Label QR Preview" (nzOnCancel)="isPrintVisible = false" [nzFooter]="printFooter">
+    <ng-container *nzModalContent>
+      <div id="print-section" class="print-wrapper" style="display: flex; justify-content: center; padding: 20px 0; background: #f0f2f5;">
+        <div class="print-card" style="width: 5cm; height: 3cm; box-sizing: border-box; padding: 0.4cm; position: relative; font-family: Arial, sans-serif; background: #ffffff; border: 1px dashed #91d5ff; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <img [src]="printData.qrUrl" alt="QR Code" class="print-qr" style="width: 1.2cm; height: 1.2cm; position: absolute; top: 0.4cm; left: 0.4cm;" />
+          <div class="print-info" style="position: absolute; top: 0.4cm; left: 1.8cm; right: 0.4cm; font-size: 10px; line-height: 1.2; word-break: break-all; color: #333333; text-align: left; margin: 0; padding: 0;">
+            <div class="print-unit-code" style="font-size: 12px; font-weight: bold; margin: 0 0 2px 0; padding: 0; line-height: 1; color: #000000;">{{ printData.unitCode }}</div>
+            <div class="print-info-item" style="margin-bottom: 1px;">{{ printData.serial }}</div>
+            <div class="print-info-item" style="margin-bottom: 1px;">{{ printData.purchasedDate }}</div>
+            <div class="print-info-item" style="margin-bottom: 1px;">{{ printData.vendor }}</div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+    <ng-template #printFooter>
+      <button nz-button nzType="default" (click)="isPrintVisible = false">Cancel</button>
+      <button nz-button nzType="primary" (click)="printBarcode()">
+        <span nz-icon nzType="printer"></span>Print Label
+      </button>
+    </ng-template>
+  </nz-modal>
+
+  <!-- Transfer State Modal -->
+  <nz-modal [(nzVisible)]="isHandoverVisible" nzTitle="Transfer Asset & State" (nzOnCancel)="isHandoverVisible = false" (nzOnOk)="submitHandover()" [nzWidth]="600">
+    <ng-container *nzModalContent>
+      <form nz-form [nzLayout]="'vertical'" [formGroup]="handoverForm">
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>Transfer Type</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="form">
+                  <nz-option nzValue="ASS" nzLabel="Assigned" [nzDisabled]="selectedAsset?.state !== '001'"></nz-option>
+                  <nz-option nzValue="LOA" nzLabel="Loan" [nzDisabled]="selectedAsset?.state !== '001'"></nz-option>
+                  <nz-option nzValue="RETURN" nzLabel="Return" [nzDisabled]="selectedAsset?.state === '007' || selectedAsset?.state === '006'"></nz-option>
+                  <nz-option nzValue="TRF" nzLabel="Transfer" [nzDisabled]="selectedAsset?.state !== '002'"></nz-option>
+                  <nz-option nzValue="PRB" nzLabel="Problem"></nz-option>
+                  <nz-option nzValue="LOST" nzLabel="Report Lost"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>Asset Status</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="detail2">
+                  <nz-option nzValue="GOOD" nzLabel="GOOD"></nz-option>
+                  <nz-option nzValue="NORMAL" nzLabel="NORMAL"></nz-option>
+                  <nz-option nzValue="BAD" nzLabel="BAD"></nz-option>
+                  <nz-option nzValue="BROKEN" nzLabel="BROKEN"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>Target HR Code</nz-form-label>
+              <nz-form-control>
+                <input nz-input formControlName="detail1" placeholder="User HR Code" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>Target User Name</nz-form-label>
+              <nz-form-control>
+                <input nz-input formControlName="userTransfer" placeholder="User name" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>Target Email</nz-form-label>
+              <nz-form-control>
+                <input nz-input formControlName="emailTransfer" placeholder="User email" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+              <nz-form-label [nzRequired]="isTargetFieldsRequired">Target Department</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="departmentTransfer" placeholder="Select Department" nzShowSearch nzAllowClear>
+                  <nz-option *ngFor="let item of getFilteredDepartments('handover')" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label [nzRequired]="isTargetFieldsRequired">Target Office</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="officeTransfer" placeholder="Select Office" nzShowSearch nzAllowClear>
+                  <nz-option *ngFor="let item of officeList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label [nzRequired]="isTargetFieldsRequired">Target Division</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="divisionTransfer" placeholder="Select Division" nzShowSearch nzAllowClear>
+                  <nz-option *ngFor="let item of getFilteredDivisions('handover')" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label [nzRequired]="isTargetFieldsRequired">Target Company</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="companyTransfer" placeholder="Select Company" nzShowSearch nzAllowClear>
+                  <nz-option *ngFor="let item of companyList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          
+        </div>
+
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label [nzRequired]="isTargetFieldsRequired">Target Group Department</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="groupDepTransfer" placeholder="Select Group Department" nzShowSearch nzAllowClear>
+                  <nz-option *ngFor="let item of groupDepList" [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label [nzRequired]="isTargetFieldsRequired">Target Area</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="areaTransfer" placeholder="Select Area" nzShowSearch nzAllowClear>
+                  <nz-option *ngFor="let area of allowedAreas" [nzValue]="area" [nzLabel]="area"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+        
+        <div nz-row [nzGutter]="16" *ngIf="handoverForm.get('form')?.value === 'PRB'">
+          <div nz-col [nzSpan]="24">
+            <nz-form-item>
+              <nz-form-control>
+                <label nz-checkbox formControlName="retrieveToITD">
+                  Retrieve/Return to ITD (Thu hồi về ITD)
+                </label>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="24">
+            <nz-form-item>
+              <nz-form-control>
+                <label nz-checkbox formControlName="transferSubAssets">
+                  Transfer sub-assets (Monitor, UPS, Mouse, Keyboard)
+                </label>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+      </form>
+    </ng-container>
+  </nz-modal>
+
+  <!-- Problem Report Modal -->
+  <nz-modal [(nzVisible)]="isProblemVisible" [nzTitle]="problemEditMode ? 'Modify IT Problem Report' : 'Create IT Problem Report'" (nzOnCancel)="isProblemVisible = false" (nzOnOk)="submitProblemReport()" [nzWidth]="600">
+    <ng-container *nzModalContent>
+      <form nz-form [nzLayout]="'vertical'" [formGroup]="problemForm">
+        <nz-form-item>
+          <nz-form-label nzRequired>Problem Summary</nz-form-label>
+          <nz-form-control>
+            <textarea nz-input formControlName="problemSummary" placeholder="Describe the issue..." [nzAutosize]="{ minRows: 2, maxRows: 4 }"></textarea>
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item *ngIf="!isViewer()">
+          <nz-form-label nzRequired>Test Procedures</nz-form-label>
+          <nz-form-control>
+            <textarea nz-input formControlName="testProcedures" placeholder="Describe test or troubleshoot procedures..." [nzAutosize]="{ minRows: 2, maxRows: 4 }"></textarea>
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item *ngIf="!isViewer()">
+          <nz-form-label nzRequired>Solutions Taken</nz-form-label>
+          <nz-form-control>
+            <textarea nz-input formControlName="solutions" placeholder="Steps taken or solution..." [nzAutosize]="{ minRows: 2, maxRows: 4 }"></textarea>
+          </nz-form-control>
+        </nz-form-item>
+        
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>Jira Ticket Code</nz-form-label>
+              <nz-form-control>
+                <input nz-input formControlName="jiraCode" placeholder="e.g. IT-1234" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+      </form>
+    </ng-container>
+  </nz-modal>
+
+  <!-- PDF Preview Modal -->
+  <nz-modal
+    [(nzVisible)]="isPreviewVisible"
+    [nzTitle]="previewTitle"
+    (nzOnCancel)="closePreview()"
+    [nzWidth]="1000"
+    [nzFooter]="previewModalFooter"
+  >
+    <ng-container *nzModalContent>
+      <div style="height: 70vh; min-height: 500px; display: flex; flex-direction: column;">
+        <iframe id="pdfPreviewIframe" *ngIf="previewUrl" [src]="previewUrl" style="width: 100%; height: 100%; border: none; border-radius: 4px;"></iframe>
+      </div>
+    </ng-container>
+    <ng-template #previewModalFooter>
+      <button nz-button nzType="default" (click)="closePreview()">Đóng</button>
+      <button nz-button nzType="primary" (click)="printPdf()">
+        <span nz-icon nzType="printer"></span> In Form
+      </button>
+    </ng-template>
+  </nz-modal>
+
+  <!-- Software Add/Edit Modal -->
+  <nz-modal
+    [(nzVisible)]="isSoftwareModalVisible"
+    [nzTitle]="softwareModalTitle"
+    (nzOnCancel)="isSoftwareModalVisible = false"
+    (nzOnOk)="onSaveSoftware()"
+    [nzOkLoading]="isSoftwareSaving"
+  >
+    <ng-container *nzModalContent>
+      <form nz-form [formGroup]="softwareForm" nzLayout="vertical">
+        <nz-form-item>
+          <nz-form-label nzRequired>Tên phần mềm (Software Name)</nz-form-label>
+          <nz-form-control nzErrorTip="Vui lòng nhập tên phần mềm!">
+            <input nz-input formControlName="software" placeholder="Nhập tên phần mềm..." />
+          </nz-form-control>
+        </nz-form-item>
+        <nz-form-item>
+          <nz-form-label>Phiên bản (Version)</nz-form-label>
+          <nz-form-control>
+            <input nz-input formControlName="version" placeholder="Nhập phiên bản (vd: 1.0, 2024...)" />
+          </nz-form-control>
+        </nz-form-item>
+      </form>
+    </ng-container>
+  </nz-modal>
+
+  <!-- Unassigned Sub-Asset Selection Modal -->
+  <nz-modal
+    [(nzVisible)]="isAddSubAssetModalVisible"
+    nzTitle="Select Sub-Asset to Add"
+    (nzOnCancel)="closeAddSubAssetModal()"
+    (nzOnOk)="confirmAddSubAsset()"
+    [nzOkDisabled]="!selectedUnassignedSubAssetCode"
+    [nzOkLoading]="isSubAssetLinkingLoading"
+    nzWidth="650px"
+  >
+    <ng-container *nzModalContent>
+      <p style="font-size: 13px; color: #535f73; margin-bottom: 12px;">
+        Select an available sub-asset to link to <strong>{{ selectedAsset?.unitCode }}</strong>:
+      </p>
+
+      <div style="margin-bottom: 12px;">
+        <nz-input-group [nzSuffix]="suffixIconSearch">
+          <input 
+            type="text" 
+            nz-input 
+            [(ngModel)]="subAssetSearchText" 
+            (keydown.enter)="onUnassignedSearchTextChange(subAssetSearchText)"
+            placeholder="Search by Unit Code or Type (Press Enter)..." 
+          />
+        </nz-input-group>
+        <ng-template #suffixIconSearch>
+          <span nz-icon nzType="search" (click)="onUnassignedSearchTextChange(subAssetSearchText)" style="cursor: pointer;"></span>
+        </ng-template>
+      </div>
+      
+      <nz-table 
+        #unassignedTable 
+        [nzData]="unassignedSubAssetsList" 
+        [nzFrontPagination]="false"
+        [nzTotal]="unassignedTotalRecords"
+        [nzPageIndex]="unassignedPageIndex"
+        [nzPageSize]="unassignedPageSize"
+        (nzPageIndexChange)="onUnassignedPageIndexChange($event)"
+        [nzLoading]="isUnassignedLoading"
+        nzSize="small" 
+        nzBordered
+      >
+        <thead>
+          <tr>
+            <th style="width: 60px; text-align: center;">Select</th>
+            <th>Unit Code</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr 
+            *ngFor="let item of unassignedTable.data" 
+            (click)="selectedUnassignedSubAssetCode = item.unitCode" 
+            style="cursor: pointer;"
+            [style.background]="selectedUnassignedSubAssetCode === item.unitCode ? '#e6f7ff' : ''"
+          >
+            <td style="text-align: center;">
+              <input 
+                type="radio" 
+                name="selectedSubAssetRadio" 
+                [value]="item.unitCode" 
+                [checked]="selectedUnassignedSubAssetCode === item.unitCode" 
+                (change)="selectedUnassignedSubAssetCode = item.unitCode" 
+              />
+            </td>
+            <td><strong style="color: #06183D;">{{ item.unitCode }}</strong></td>
+            <td>{{ item.type }}</td>
+          </tr>
+          <tr *ngIf="unassignedSubAssetsList.length === 0 && !isUnassignedLoading">
+            <td colspan="3" style="text-align: center; color: #999; padding: 20px;">
+              No unassigned sub-assets found.
+            </td>
+          </tr>
+        </tbody>
+      </nz-table>
+
+    </ng-container>
+
+  </nz-modal>
+</div>
+

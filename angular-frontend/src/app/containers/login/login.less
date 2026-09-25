@@ -1,0 +1,130 @@
+.login-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: url('/assets/images/background_HLC.jpg') no-repeat center center;
+  background-size: cover;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1;
+  }
+
+  .glass-card {
+    position: relative;
+    z-index: 2;
+    width: 400px;
+    padding: 40px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    text-align: center;
+    color: #fff;
+    animation: fadeIn 0.8s ease-out;
+
+    .login-header {
+      margin-bottom: 30px;
+
+      .logo-image-area {
+        margin-bottom: 20px;
+        
+        .logo-login-img {
+          max-width: 240px;
+          height: auto;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+      }
+
+      p {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 13px;
+        margin-top: 4px;
+      }
+    }
+
+    .login-form {
+      .ant-form-item {
+        margin-bottom: 20px;
+      }
+
+      .ant-input-group-wrapper {
+        .ant-input-wrapper {
+          input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            height: 40px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+
+            &::placeholder {
+              color: rgba(255, 255, 255, 0.6);
+            }
+
+            &:focus, &.ant-input-focused {
+              background: rgba(255, 255, 255, 0.2);
+              border-color: #1890ff;
+              box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+            }
+          }
+          
+          .ant-input-prefix {
+            color: rgba(255, 255, 255, 0.8) !important;
+          }
+        }
+      }
+
+      .login-button {
+        height: 40px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 6px;
+        background: #1890ff;
+        border: none;
+        margin-top: 10px;
+        transition: all 0.3s ease;
+
+        &:hover, &:focus {
+          background: #40a9ff;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+      }
+    }
+
+    .login-footer {
+      margin-top: 35px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

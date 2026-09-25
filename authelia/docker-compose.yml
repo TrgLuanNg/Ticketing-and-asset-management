@@ -1,0 +1,11 @@
+services:
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia-sso
+    restart: unless-stopped
+    volumes:
+      - ./config:/config
+    ports:
+      - "9091:9091"
+    environment:
+      - TZ=Asia/Ho_Chi_Minh

@@ -1,0 +1,126 @@
+<div class="container specs-container">
+  <div nz-row [nzGutter]="24">
+    <!-- Tech Specs Group Card -->
+    <div nz-col [nzSpan]="12" [nzXs]="24" [nzLg]="12" class="col-card">
+      <nz-card nzTitle="Specification Group (Key)" [nzBordered]="false" class="modern-card shadow-sm">
+        <div class="specs-toolbar">
+          <button nz-button nzType="primary" (click)="onAddTech()">
+            <span nz-icon nzType="plus"></span>Add Group
+          </button>
+          <button nz-button nzType="default" (click)="onEditTech()" [disabled]="!selectedKey">
+            <span nz-icon nzType="edit"></span>Edit
+          </button>
+          <nz-input-group [nzPrefix]="prefixTemplate" style="width: 220px; margin-left: auto;">
+            <input type="text" nz-input placeholder="Search group (Press Enter)..." [(ngModel)]="searchInput" (keydown.enter)="onSearchKey()" />
+          </nz-input-group>
+          <ng-template #prefixTemplate><span nz-icon nzType="search"></span></ng-template>
+        </div>
+        
+        <nz-table #keyTable [nzData]="filteredTechSpecKeys" [nzLoading]="loadingKeys" nzBordered nzSize="middle" [nzPageSize]="10">
+          <thead>
+            <tr>
+              <th>Group Name</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let data of keyTable.data" (click)="onRowSelectKey(data)" [class.selected]="selectedKey?.name === data.name" class="clickable-row">
+              <td><strong>{{ data.name }}</strong></td>
+              <td>{{ data.descriptionTechSpecs }}</td>
+            </tr>
+          </tbody>
+        </nz-table>
+      </nz-card>
+    </div>
+
+    <!-- Tech Specs Items Card -->
+    <div nz-col [nzSpan]="12" [nzXs]="24" [nzLg]="12" class="col-card">
+      <nz-card [nzTitle]="'Specification Items' + (selectedKey ? ' - ' + selectedKey.name : '')" [nzBordered]="false" class="modern-card shadow-sm">
+        <div class="specs-toolbar">
+          <button nz-button nzType="primary" (click)="onAddItem()" [disabled]="!selectedKey">
+            <span nz-icon nzType="plus"></span>Add Item
+          </button>
+          <button nz-button nzType="default" (click)="onEditItem()" [disabled]="!selectedItem">
+            <span nz-icon nzType="edit"></span>Edit
+          </button>
+        </div>
+        
+        <nz-table #itemTable [nzData]="techSpecItems" [nzLoading]="loadingItems" nzBordered nzSize="middle" [nzPageSize]="10">
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Value (Item Details)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let data of itemTable.data" (click)="onRowSelectItem(data)" [class.selected]="selectedItem?.id === data.id" class="clickable-row">
+              <td class="muted-text">{{ data.item }}</td>
+              <td><strong>{{ data.techSpecs }}</strong></td>
+            </tr>
+          </tbody>
+        </nz-table>
+        
+        <div *ngIf="!selectedKey" class="select-placeholder">
+          <span nz-icon nzType="info-circle" nzTheme="outline" class="info-icon"></span>
+          <span>Select a group from the left table to load and manage item specification values.</span>
+        </div>
+      </nz-card>
+    </div>
+  </div>
+</div>
+
+<!-- Group Modal -->
+<nz-modal
+  [(nzVisible)]="isGroupModalVisible"
+  [nzTitle]="groupModalTitle"
+  (nzOnCancel)="isGroupModalVisible = false"
+  (nzOnOk)="handleGroupOk()"
+  [nzOkLoading]="isGroupOkLoading"
+  nzWidth="500px"
+>
+  <ng-container *nzModalContent>
+    <form nz-form [formGroup]="groupForm" (ngSubmit)="handleGroupOk()" [nzLayout]="'vertical'">
+      <nz-form-item>
+        <nz-form-label nzRequired nzFor="name">Group Name</nz-form-label>
+        <nz-form-control nzErrorTip="Please input Group Name!">
+          <input nz-input formControlName="name" id="name" placeholder="e.g. CPU, RAM, Storage, OS" />
+        </nz-form-control>
+      </nz-form-item>
+      
+      <nz-form-item>
+        <nz-form-label nzFor="descriptionTechSpecs">Description</nz-form-label>
+        <nz-form-control>
+          <input nz-input formControlName="descriptionTechSpecs" id="descriptionTechSpecs" placeholder="Optional brief description..." />
+        </nz-form-control>
+      </nz-form-item>
+    </form>
+  </ng-container>
+</nz-modal>
+
+<!-- Item Modal -->
+<nz-modal
+  [(nzVisible)]="isItemModalVisible"
+  [nzTitle]="itemModalTitle"
+  (nzOnCancel)="isItemModalVisible = false"
+  (nzOnOk)="handleItemOk()"
+  [nzOkLoading]="isItemOkLoading"
+  nzWidth="500px"
+>
+  <ng-container *nzModalContent>
+    <form nz-form [formGroup]="itemForm" (ngSubmit)="handleItemOk()" [nzLayout]="'vertical'">
+      <nz-form-item>
+        <nz-form-label nzFor="specGroup">Spec Group (Read-only)</nz-form-label>
+        <nz-form-control>
+          <input nz-input formControlName="specGroup" id="specGroup" />
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-label nzRequired nzFor="item">Item Value</nz-form-label>
+        <nz-form-control nzErrorTip="Please input item value!">
+          <input nz-input formControlName="item" id="item" placeholder="e.g. Intel Core i5, 16GB DDR4, 512GB SSD" />
+        </nz-form-control>
+      </nz-form-item>
+    </form>
+  </ng-container>
+</nz-modal>

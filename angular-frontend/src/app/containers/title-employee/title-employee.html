@@ -1,0 +1,66 @@
+<div class="container employee-container">
+  <div class="toolbar-wrapper">
+    <div class="toolbar-left">
+      <button nz-button nzType="primary" (click)="onAdd()">
+        <span nz-icon nzType="plus"></span>Add Title Employee
+      </button>
+      <button nz-button nzType="default" (click)="onEdit()" [disabled]="!selectedEmp">
+        <span nz-icon nzType="edit"></span>Edit
+      </button>
+
+    </div>
+    
+    <div class="toolbar-right">
+      <nz-input-group [nzSuffix]="suffixIconSearch">
+        <input type="text" nz-input placeholder="" [(ngModel)]="searchText" (keyup.enter)="onSearch(searchText)" (ngModelChange)="searchText === '' ? onSearch('') : null" />
+      </nz-input-group>
+      <ng-template #suffixIconSearch>
+        <span nz-icon nzType="search"></span>
+      </ng-template>
+    </div>
+  </div>
+
+  <div class="grid-card-table">
+    <nz-table #basicTable [nzData]="titleEmployees" [nzLoading]="loading" nzBordered nzSize="middle" [nzPageSize]="10">
+      <thead>
+        <tr>
+          <th>Employee Code</th>
+          <th>Job Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let data of basicTable.data" (click)="onRowSelect(data)" [class.selected]="selectedEmp?.employeeCode === data.employeeCode" class="clickable-row">
+          <td><strong>{{ data.employeeCode }}</strong></td>
+          <td>{{ data.title }}</td>
+        </tr>
+      </tbody>
+    </nz-table>
+  </div>
+</div>
+
+<nz-modal
+  [(nzVisible)]="isVisible"
+  [nzTitle]="modalTitle"
+  (nzOnCancel)="handleCancel()"
+  (nzOnOk)="handleOk()"
+  [nzOkLoading]="isOkLoading"
+  nzWidth="500px"
+>
+  <ng-container *nzModalContent>
+    <form nz-form [formGroup]="validateForm" (ngSubmit)="handleOk()" [nzLayout]="'vertical'">
+      <nz-form-item>
+        <nz-form-label nzRequired nzFor="employeeCode">Employee Code</nz-form-label>
+        <nz-form-control nzErrorTip="Please input employee code!">
+          <input nz-input formControlName="employeeCode" id="employeeCode" placeholder="e.g. EMP12345" />
+        </nz-form-control>
+      </nz-form-item>
+      
+      <nz-form-item>
+        <nz-form-label nzRequired nzFor="title">Job Title</nz-form-label>
+        <nz-form-control nzErrorTip="Please input job title!">
+          <input nz-input formControlName="title" id="title" placeholder="e.g. IT Officer, Account Executive" />
+        </nz-form-control>
+      </nz-form-item>
+    </form>
+  </ng-container>
+</nz-modal>

@@ -1,0 +1,171 @@
+# ==========================================
+# Root .gitignore for CCNLTHD / ITAM Multi-Service Architecture
+# Covers: Go Backend, .NET Backend, Angular Frontend, Authelia SSO, Docker & OS
+# ==========================================
+
+# ------------------------------------------
+# Environment & Sensitive Credentials
+# ------------------------------------------
+.env
+.env.*
+*.env
+!.env.example
+!.env.template
+
+# Security Keys & Certificates
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt
+
+# ------------------------------------------
+# Authelia SSO Runtime & Storage
+# ------------------------------------------
+**/authelia/config/db.sqlite3*
+**/authelia/config/notification.txt
+authelia/config/db.sqlite3*
+authelia/config/notification.txt
+db.sqlite3*
+notification.txt
+
+# ------------------------------------------
+# Go (go-backend)
+# ------------------------------------------
+# Compiled Binaries
+go-backend-linux
+go-backend.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+bin/
+
+# Go Test & Profiling Artifacts
+*.test
+*.out
+profile.out
+
+# Go Debugging
+__debug_bin*
+
+# ------------------------------------------
+# .NET / C# (ITAM_backend / lab.cs)
+# ------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Aa]pp_[Dd]ata/
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.pidb
+*.booproj
+*.svclog
+_ReSharper*/
+*.dotCover
+*.ncrunch*
+nCrunch.xml
+TestResult.xml
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+ClientUrlCache.xml
+Generated\ Files/
+upgradeLog.htm
+UpgradeLog.XML
+
+# ------------------------------------------
+# Angular / Node.js (Frontend)
+# ------------------------------------------
+node_modules/
+dist/
+tmp/
+out-tsc/
+bazel-out/
+.angular/
+.sass-cache/
+connect.lock
+coverage/
+libpeerconnection.log
+testem.log
+typings/
+__screenshots__/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------
+# Rust (rust-service)
+# ------------------------------------------
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# ------------------------------------------
+# Databases & Local Storage
+# ------------------------------------------
+*.sqlite
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.db
+*.db-shm
+*.db-wal
+*.sql.gz
+*.dump
+
+# ------------------------------------------
+# Docker & Containers
+# ------------------------------------------
+docker-compose.override.yml
+.docker/
+
+# ------------------------------------------
+# IDEs & Code Editors
+# ------------------------------------------
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/mcp.json
+.history/
+
+# JetBrains (Rider, GoLand, WebStorm, etc.)
+.idea/
+*.iml
+
+# Other editors
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# ------------------------------------------
+# Operating System Artifacts
+# ------------------------------------------
+# Windows
+desktop.ini
+Thumbs.db
+ehthumbs.db
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory

@@ -1,0 +1,116 @@
+server:
+  address: tcp://0.0.0.0:9091/
+  tls:
+    certificate: /config/public.crt
+    key: /config/private.pem
+
+log:
+  level: info
+
+telemetry:
+  metrics:
+    enabled: false
+
+identity_validation:
+  reset_password:
+    jwt_secret: a_very_secure_jwt_secret_key_itam_2026_32chars
+
+session:
+  secret: a_very_secure_session_secret_itam_2026_32chars
+  cookies:
+    - domain: 127.0.0.1
+      authelia_url: https://127.0.0.1:9091
+
+storage:
+  encryption_key: a_very_secure_storage_encryption_key_32chars
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /config/notification.txt
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: pbkdf2
+      iterations: 310000
+
+access_control:
+  default_policy: one_factor
+  rules:
+    - domain: ["localhost"]
+      policy: one_factor
+
+identity_providers:
+  oidc:
+    hmac_secret: a_very_secure_hmac_secret_for_oidc_token_32c
+    jwks:
+      - key_id: 'itam-rsa-key'
+        use: 'sig'
+        algorithm: 'RS256'
+        key: |
+          -----BEGIN PRIVATE KEY-----
+          MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBWE4on3oxFjWg
+          iB/sdi0LLwyAcFpp1gpKKJuUifF0NbGUmeBiphtVUKKJXMxBIgykm1R5MjDEtOGl
+          ++nb8cGbTJrUQhb0ro6QNlYwoDRaodpNzE/oz/J0xnC1jalgRgQOdqXC1tcyr0tC
+          zEMYkkyWlZ/5aNUDUECg674mKQOj1vpLOv58eKaMxagCRAQl8c/y5Rc8yDiJOygO
+          Y+h4utUjKgCdvd0J+SxDaMjAMudsRe+YddbzTRNAjwnjnX1onb/iX7ESI4DqDbqJ
+          bBTe85TKFRwaHZXTqpYiR06PqwzIFxVZjyQIX8JLgBDPWbkILHA1dig9uxCZJeFU
+          wD+gLEnZAgMBAAECggEAGrU1Dr2A5pj3zXYgWsy0SjA0nOVoR+huQXI8k5c+iFwG
+          bM2YxmfFrNJXsXvlJzYp4u8mCxvYysNlzETxOBW8NdSuKpX6j9AxF1C6NTtcIAzt
+          mAOaIkHfbyweU6X++LKTSuAu46xDy9eVIOQQfKtw8vg2QgCuNCf41YHbIXBW9WG2
+          NaoaPXynzFBUD/kvzelS2jhs4YFRSfeRQj9fZqEGlmRBTRPNFxL4jpx8THvIsIBH
+          zRHQQFn/2Q/0ICu/MV1ue2eZlfzSzUM70cAk7JBLVLu9dXysyibUbC+Xx8I4wcRq
+          MqSUTsDMPqXWNiPGgCxWzXfiKE8wovgb0J/yX4Y75QKBgQDK6AgXqdFjodCK2xEh
+          sxIP3ZprEyHnmWBMPSCC7i9LqLq1xtdKRLpOsF07DEKE/wJ05n6Nk2IdtVAEC9Ne
+          eWuJlpnw8ksKemTTtttNLq5YZpp06mN292pJLT5vkq1AK64nSCaeB7qo1AYAftzR
+          ayy7iYk4mdkcnUnc5A5AH7LNrwKBgQDz78mupXCe0mieWK2Wt7oluhZpfD5tzPbK
+          dcQvKachUaJXuYuZOKyfX/IbHyNkmJ1PR1dAt4tC02OGOJ3iRmp2ETwfQ1KhE6uy
+          55r4Iwtane10u3HHHm6pAFhq9DmmJz/mUXbOIU2NFR+4QfQT+5fQOD/bh3QYScW2
+          UNxxehEK9wKBgAbCOdrH7lCaSD8H0wdDVruujwE4Du4O/tUrSBT0aCDmCuoZKHyx
+          017howlffCu/7s4EC30dxqvkqTipSC4ib0GTAaez+mnr78XZlm54upf5OvXgBNYm
+          oaS0XBsNULYNfmySi67B5SbQgS6tCx/yqPfKOgbnoQLB/n7cHdlm9ObDAoGBAIKA
+          VSB257JAFLIp9Ow97HtEe7sBOhDZ52nW6RbmLMB5gOV3oUReepNk7Awwc2nc78O7
+          AeXgi8M7ffIPlf+49jml7Mk45hrAgEnc+B4p+WgIN0INCcih8ke9pI/Lio/mTZw1
+          Ft8eF/QTSf30YtTR85z0is0yQRzBUuG/jr+ysy1vAoGAEx7Rs6NRprVfBvl3mLts
+          ROII6HolEsUMrMuRVKX2ZotWvbCrpzxe3j8b0etWPgN2ky23JJ60r+2I0Kvb6zvK
+          CSBY9SBHWyxUszmeATOUzHbSXgzSffGx+1COnJnxaQb71rBzNJ/3o3BA43W6Ckb2
+          S9EOv3FWGDFRIjpPLNm2Nbg=
+          -----END PRIVATE KEY-----
+    cors:
+      endpoints:
+        - authorization
+        - token
+        - userinfo
+      allowed_origins_from_client_redirect_uris: true
+    claims_policies:
+      itam_policy:
+        id_token:
+          - preferred_username
+          - name
+          - email
+          - groups
+    clients:
+      - client_id: 'itam-client'
+        client_name: 'ITAM Portal'
+        client_secret: '$pbkdf2-sha512$310000$FyaNE2UrFmQiOebzdX6Q1A$BwZW7IzLYZ2tbGW55k8dnvs4xc1pk4bwlZZ7gazRqXD6Oc5H3OAq9dgWpp49Kpcq5jb1UVnjuQ7xxO44O.KBUQ'
+        public: false
+        authorization_policy: 'one_factor'
+        consent_mode: 'auto'
+        token_endpoint_auth_method: 'client_secret_basic'
+        claims_policy: 'itam_policy'
+        redirect_uris:
+          - 'http://localhost:4200/auth'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+        response_types:
+          - 'code'
+        grant_types:
+          - 'authorization_code'
+        response_modes:
+          - 'query'
+          - 'form_post'

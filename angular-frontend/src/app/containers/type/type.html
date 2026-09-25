@@ -1,0 +1,139 @@
+<div class="container type-container">
+  <div nz-row [nzGutter]="24">
+    <!-- Left Table: Asset Types -->
+    <div nz-col [nzSpan]="12" [nzXs]="24" [nzLg]="12" class="col-card">
+      <nz-card nzTitle="Asset Types" [nzBordered]="false" class="modern-card shadow-sm">
+        <div class="toolbar-wrapper" style="margin-bottom: 16px;">
+          <div class="toolbar-left" style="display: flex; gap: 8px;">
+            <button nz-button nzType="primary" (click)="onAdd()" *ngIf="hasPermission('TypeModify')">
+              <span nz-icon nzType="plus"></span>Add Type
+            </button>
+            <button nz-button nzType="default" (click)="onEdit()" [disabled]="!selectedType" *ngIf="hasPermission('TypeModify')">
+              <span nz-icon nzType="edit"></span>Edit
+            </button>
+          </div>
+        </div>
+        
+        <div class="toolbar-search" style="margin-bottom: 16px;">
+          <nz-input-group [nzSuffix]="suffixIconSearch">
+            <input type="text" nz-input placeholder="Search asset types" [(ngModel)]="searchText" (keyup.enter)="onSearch(searchText)" (ngModelChange)="searchText === '' ? onSearch('') : null" />
+          </nz-input-group>
+          <ng-template #suffixIconSearch>
+            <span nz-icon nzType="search"></span>
+          </ng-template>
+        </div>
+
+        <nz-table #basicTable [nzData]="types" [nzLoading]="loading" nzBordered nzSize="middle" [nzPageSize]="10">
+          <thead>
+            <tr>
+              <th>Type ID</th>
+              <th>Type Name</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let data of basicTable.data" (click)="onRowSelect(data)" [class.selected]="selectedType?.type === data.type" class="clickable-row">
+              <td><strong>{{ data.type }}</strong></td>
+              <td>{{ data.typeName }}</td>
+              <td>{{ data.vn }}</td>
+            </tr>
+          </tbody>
+        </nz-table>
+      </nz-card>
+    </div>
+
+    <!-- Right Table: Tech Specs configuration (DeviceConfig) -->
+    <div nz-col [nzSpan]="12" [nzXs]="24" [nzLg]="12" class="col-card">
+      <nz-card [nzTitle]="'Tech Specs Configuration' + (selectedType ? ' - ' + selectedType.typeName : '')" [nzBordered]="false" class="modern-card shadow-sm">
+        <div class="toolbar-wrapper" style="margin-bottom: 16px;">
+          <div class="toolbar-left">
+            <button nz-button nzType="primary" (click)="onEditConfig()" [disabled]="!selectedType" *ngIf="hasPermission('TypeModify')">
+              <span nz-icon nzType="setting"></span>Configure Tech Specs
+            </button>
+          </div>
+        </div>
+
+        <nz-table #configTable [nzData]="displayConfigRows" [nzLoading]="loadingConfig" nzBordered nzSize="middle" [nzShowPagination]="false" *ngIf="selectedType">
+          <thead>
+            <tr>
+              <th>Specification Group</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let data of configTable.data">
+              <td><strong>{{ data.value }}</strong></td>
+            </tr>
+          </tbody>
+        </nz-table>
+
+        <div *ngIf="!selectedType" class="select-placeholder">
+          <span nz-icon nzType="info-circle" nzTheme="outline" class="info-icon"></span>
+          <span>Select an asset type from the left table to view and configure its tech specs slots.</span>
+        </div>
+      </nz-card>
+    </div>
+  </div>
+</div>
+
+<!-- Type Add/Edit Modal -->
+<nz-modal
+  [(nzVisible)]="isVisible"
+  [nzTitle]="modalTitle"
+  (nzOnCancel)="handleCancel()"
+  (nzOnOk)="handleOk()"
+  [nzOkLoading]="isOkLoading"
+  nzWidth="550px"
+>
+  <ng-container *nzModalContent>
+    <form nz-form [formGroup]="validateForm" (ngSubmit)="handleOk()" [nzLayout]="'vertical'">
+      <nz-form-item>
+        <nz-form-label nzRequired nzFor="type">Type ID</nz-form-label>
+        <nz-form-control nzErrorTip="Please input Type ID!">
+          <input nz-input formControlName="type" id="type" placeholder="e.g. LTP, DPC" />
+        </nz-form-control>
+      </nz-form-item>
+      
+      <nz-form-item>
+        <nz-form-label nzRequired nzFor="typeName">Type Name</nz-form-label>
+        <nz-form-control nzErrorTip="Please input Type Name!">
+          <input nz-input formControlName="typeName" id="typeName" placeholder="e.g. Laptop, Desktop PC" />
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-label nzFor="vn">Vietnamese Translation</nz-form-label>
+        <nz-form-control>
+          <input nz-input formControlName="vn" id="vn" placeholder="e.g. Máy tính xách tay, Máy tính để bàn" />
+        </nz-form-control>
+      </nz-form-item>
+    </form>
+  </ng-container>
+</nz-modal>
+
+<!-- Tech Specs Config Modal -->
+<nz-modal
+  [(nzVisible)]="isConfigModalVisible"
+  [nzTitle]="'Configure Tech Specs for ' + (selectedType?.typeName || selectedType?.type)"
+  (nzOnCancel)="isConfigModalVisible = false"
+  (nzOnOk)="handleConfigOk()"
+  [nzOkLoading]="isConfigOkLoading"
+  nzWidth="650px"
+>
+  <ng-container *nzModalContent>
+    <form nz-form [formGroup]="configForm" [nzLayout]="'vertical'">
+      <div nz-row [nzGutter]="16">
+        <div nz-col [nzSpan]="12" *ngFor="let slot of slots">
+          <nz-form-item>
+            <nz-form-label>{{ slot.label }}</nz-form-label>
+            <nz-form-control>
+              <nz-select [formControlName]="slot.controlName" nzShowSearch nzAllowClear nzPlaceHolder="Select spec group">
+                <nz-option nzValue="NONE" nzLabel="NONE"></nz-option>
+                <nz-option *ngFor="let group of techSpecGroups" [nzLabel]="group.name" [nzValue]="group.name"></nz-option>
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+      </div>
+    </form>
+  </ng-container>
+</nz-modal>

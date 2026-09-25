@@ -1,0 +1,130 @@
+<nz-layout class="app-layout">
+  <nz-header class="app-header">
+    <div class="header-left">
+      <div class="logo-wrapper">
+        <img src="assets/images/logo-white.png" alt="Logo" class="header-logo" />
+      </div>
+      <span class="system-title">ITAM</span>
+    </div>
+
+    <div class="header-center">
+      <ul nz-menu nzTheme="dark" nzMode="horizontal" class="header-menu">
+        <!-- 1. Statistics -->
+        <li nz-menu-item [nzMatchRouter]="true" [nzMatchRouterExact]="true" *ngIf="isAdmin()">
+          <a routerLink="/statistics">
+            <span nz-icon nzType="pie-chart"></span>
+            <span>Statistics</span>
+          </a>
+        </li>
+
+        <!-- 2. Assets -->
+        <li nz-submenu [nzTitle]="assetsTitle" nzIcon="appstore">
+          <ng-template #assetsTitle>
+            <a routerLink="/assets" style="color: inherit; text-decoration: none;">Assets</a>
+          </ng-template>
+          <ul>
+            <li nz-menu-item>
+              <a routerLink="/assets" [queryParams]="{ action: 'add' }">
+                <span nz-icon nzType="plus"></span>
+                <span>Add New</span>
+              </a>
+            </li>
+            <li nz-menu-item *ngIf="hasPermission('Disposal')">
+              <a routerLink="/assets" [queryParams]="{ action: 'disposal' }">
+                <span nz-icon nzType="delete"></span>
+                <span>Disposal</span>
+              </a>
+            </li>
+            <li nz-menu-item>
+              <a routerLink="/assets" [queryParams]="{ action: 'import' }">
+                <span nz-icon nzType="upload"></span>
+                <span>Import</span>
+              </a>
+            </li>
+            <li nz-menu-item>
+              <a routerLink="/assets" [queryParams]="{ action: 'export' }">
+                <span nz-icon nzType="download"></span>
+                <span>Export</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- 3. Config (formerly Attribute pop-out list) -->
+        <li nz-submenu [nzTitle]="configTitle" nzIcon="setting" *ngIf="isAdmin()">
+          <ng-template #configTitle>
+            <span style="color: inherit; text-decoration: none; cursor: pointer;">Config</span>
+          </ng-template>
+          <ul>
+            <li nz-menu-item>
+              <a routerLink="/department">
+                <span nz-icon nzType="apartment"></span>
+                <span>Department</span>
+              </a>
+            </li>
+            <li nz-menu-item>
+              <a routerLink="/type">
+                <span nz-icon nzType="tag"></span>
+                <span>Type</span>
+              </a>
+            </li>
+            <li nz-menu-item>
+              <a routerLink="/tech-specs">
+                <span nz-icon nzType="setting"></span>
+                <span>Tech Specs</span>
+              </a>
+            </li>
+            <li nz-menu-item>
+              <a routerLink="/title-employee">
+                <span nz-icon nzType="idcard"></span>
+                <span>Employee Title</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- 4. Accounts -->
+        <li nz-menu-item [nzMatchRouter]="true" *ngIf="isAdmin() || hasPermission('UserManager')">
+          <a routerLink="/user">
+            <span nz-icon nzType="user"></span>
+            <span>Accounts</span>
+          </a>
+        </li>
+
+        <!-- 5. Reports -->
+        <li class="ant-menu-item" style="padding-left: 24px;" *ngIf="isAdmin()">
+          <a href="" target="_blank" style="display: flex; align-items: center; gap: 8px; color: inherit;">
+            <span nz-icon nzType="file-text"></span>
+            <span>Reports</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="header-right">
+      <div class="header-user-info">
+        <div class="user-profile">
+          <span class="avatar-circle">{{ getCurrentUserInitials() }}</span>
+          <div class="profile-meta">
+            <span class="profile-name">{{ getCurrentUserName() }}</span>
+            <span class="profile-role">{{ getCurrentUserRole() }}</span>
+          </div>
+        </div>
+
+        <button nz-button nzType="text" class="header-logout-btn" (click)="onLogout()" nz-tooltip nzTooltipTitle="Log-out">
+          <span nz-icon nzType="logout" nzTheme="outline"></span>
+        </button>
+      </div>
+    </div>
+  </nz-header>
+
+  <nz-layout class="right-layout">
+    <nz-content class="app-content">
+      <router-outlet></router-outlet>
+    </nz-content>
+
+    <nz-footer class="app-footer">
+      <span>Yusen Logistics (Vietnam) Co., Ltd. &copy; 2026.</span>
+    </nz-footer>
+  </nz-layout>
+</nz-layout>
