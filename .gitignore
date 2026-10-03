@@ -41,7 +41,6 @@ go-backend.exe
 *.dll
 *.so
 *.dylib
-main
 bin/
 
 # Go Test & Profiling Artifacts
