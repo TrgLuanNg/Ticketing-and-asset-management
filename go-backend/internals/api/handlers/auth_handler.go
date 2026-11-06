@@ -4,17 +4,17 @@ import (
 	"net/http"
 
 	"go-backend/internals/core/dtos"
-	"go-backend/internals/services"
+	"go-backend/internals/core/ports"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
+	authUseCase ports.AuthUseCase
 }
 
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authUseCase ports.AuthUseCase) *AuthHandler {
+	return &AuthHandler{authUseCase: authUseCase}
 }
 
 // Login handles local POST /api/auths/login
@@ -25,7 +25,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	res, err := h.authService.Login(c.Request.Context(), dto.Username, dto.Password)
+	res, err := h.authUseCase.Login(c.Request.Context(), dto.Username, dto.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dtos.ErrorResponse(err.Error()))
 		return
@@ -46,7 +46,7 @@ func (h *AuthHandler) GetByAuthCode(c *gin.Context) {
 		return
 	}
 
-	res, err := h.authService.GetResource(c.Request.Context(), authCode)
+	res, err := h.authUseCase.GetResource(c.Request.Context(), authCode)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dtos.ErrorResponse(err.Error()))
 		return
@@ -63,7 +63,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	res, err := h.authService.RefreshSession(c.Request.Context(), dto.RefreshToken)
+	res, err := h.authUseCase.RefreshSession(c.Request.Context(), dto.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, dtos.ErrorResponse(err.Error()))
 		return

@@ -2,7 +2,7 @@ package domains
 
 type PROBLEMREPORT struct {
 	ID               string   `gorm:"column:ID;primaryKey;type:varchar(50)" json:"id"`
-	UnitCode         string   `gorm:"column:UnitCode;type:varchar(21)" json:"unitCode"`
+	UnitCode         string   `gorm:"column:UnitCode;primaryKey;type:varchar(21)" json:"unitCode"`
 	ReportDate       DateOnly `gorm:"column:ReportDate" json:"reportDate"`
 	UserCreated      string   `gorm:"column:UserCreated;type:varchar(50)" json:"userCreated"`
 	ProblemSummary   string   `gorm:"column:ProblemSummary;type:text" json:"problemSummary"`
@@ -32,10 +32,10 @@ func (PROBLEMREPORT) TableName() string {
 }
 
 type IMAGEREPORT struct {
-	ID        int64  `gorm:"column:ID;primaryKey;autoIncrement" json:"id"`
-	ProblemID string `gorm:"column:ProblemID;type:varchar(50)" json:"problemId"`
-	Image     []byte `gorm:"column:Image" json:"image,omitempty"`
-	ImageName string `gorm:"column:ImageName;type:varchar(255)" json:"imageName"`
+	ID         string `gorm:"column:ID;primaryKey;type:varchar(9)" json:"id"`
+	TypeReport string `gorm:"column:TypeReport;primaryKey;type:varchar(20)" json:"typeReport"`
+	Image1     []byte `gorm:"column:Image1" json:"image1,omitempty"`
+	Image2     []byte `gorm:"column:Image2" json:"image2,omitempty"`
 }
 
 func (IMAGEREPORT) TableName() string {

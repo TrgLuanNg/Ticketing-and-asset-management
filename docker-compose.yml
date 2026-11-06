@@ -43,6 +43,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./angular-frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./angular-frontend/dist/ITAM_test/browser:/usr/share/nginx/html:ro
     ports:
       - "4200:4200"
     depends_on:

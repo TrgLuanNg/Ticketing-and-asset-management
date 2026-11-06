@@ -8,17 +8,17 @@ import (
 
 	"go-backend/internals/api/middlewares"
 	"go-backend/internals/core/dtos"
-	"go-backend/internals/services"
+	"go-backend/internals/core/ports"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AssetHandler struct {
-	assetService *services.AssetService
+	assetUseCase ports.AssetUseCase
 }
 
-func NewAssetHandler(assetService *services.AssetService) *AssetHandler {
-	return &AssetHandler{assetService: assetService}
+func NewAssetHandler(assetUseCase ports.AssetUseCase) *AssetHandler {
+	return &AssetHandler{assetUseCase: assetUseCase}
 }
 
 func (h *AssetHandler) SearchGrid(c *gin.Context) {
@@ -28,7 +28,7 @@ func (h *AssetHandler) SearchGrid(c *gin.Context) {
 	userSession := middlewares.GetUserSession(c)
 	filter.UserSession = userSession
 
-	data, total, err := h.assetService.SearchGrid(c.Request.Context(), &filter, userSession)
+	data, total, err := h.assetUseCase.SearchGrid(c.Request.Context(), &filter, userSession)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -37,11 +37,22 @@ func (h *AssetHandler) SearchGrid(c *gin.Context) {
 	c.JSON(http.StatusOK, dtos.PagedResponse(data, total))
 }
 
+func (h *AssetHandler) GetAll(c *gin.Context) {
+	userSession := middlewares.GetUserSession(c)
+	data, err := h.assetUseCase.GetAll(c.Request.Context(), userSession)
+	if err != nil {
+		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dtos.SuccessResponse(data))
+}
+
 func (h *AssetHandler) GetById(c *gin.Context) {
 	id := c.Param("id")
-	dto, err := h.assetService.GetByID(c.Request.Context(), id)
+	userSession := middlewares.GetUserSession(c)
+	dto, err := h.assetUseCase.GetByID(c.Request.Context(), userSession, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, dtos.ErrorResponse("Asset not found"))
+		c.JSON(http.StatusNotFound, dtos.ErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, dtos.SuccessResponse(dto))
@@ -51,11 +62,11 @@ func (h *AssetHandler) Insert(c *gin.Context) {
 	userSession := middlewares.GetUserSession(c)
 	var dto dtos.AssetDto
 	if err := c.ShouldBindJSON(&dto); err != nil {
-		c.JSON(http.StatusOK, dtos.ErrorResponse("Invalid asset payload"))
+		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
 	}
 
-	created, err := h.assetService.Insert(c.Request.Context(), userSession, &dto)
+	created, err := h.assetUseCase.Insert(c.Request.Context(), userSession, &dto)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -74,12 +85,14 @@ func (h *AssetHandler) Update(c *gin.Context) {
 		return
 	}
 
-	if err := h.assetService.Update(c.Request.Context(), userSession, id, &dto); err != nil {
+	if err := h.assetUseCase.Update(c.Request.Context(), userSession, id, &dto); err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
 	}
 
-	dto.UnitCode = id
+	if dto.UnitCode == "" {
+		dto.UnitCode = id
+	}
 	c.JSON(http.StatusOK, dtos.SuccessResponse(dto, "Updated successfully"))
 }
 
@@ -87,7 +100,7 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 	userSession := middlewares.GetUserSession(c)
 
-	if err := h.assetService.Delete(c.Request.Context(), userSession, id); err != nil {
+	if err := h.assetUseCase.Delete(c.Request.Context(), userSession, id); err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
 	}
@@ -100,7 +113,7 @@ func (h *AssetHandler) Export(c *gin.Context) {
 	_ = c.ShouldBindJSON(&filter)
 
 	userSession := middlewares.GetUserSession(c)
-	fileBytes, err := h.assetService.ExportExcel(c.Request.Context(), &filter, userSession)
+	fileBytes, err := h.assetUseCase.ExportExcel(c.Request.Context(), &filter, userSession)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dtos.ErrorResponse("Không tìm thấy dữ liệu để xuất Excel."))
 		return
@@ -125,7 +138,7 @@ func (h *AssetHandler) ImportFile(c *gin.Context) {
 	}
 	defer f.Close()
 
-	res, err := h.assetService.ImportExcel(c.Request.Context(), f, userSession)
+	res, err := h.assetUseCase.ImportExcel(c.Request.Context(), f, userSession)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dtos.ErrorResponse(err.Error()))
 		return
@@ -152,7 +165,7 @@ func (h *AssetHandler) GetDashboardMetrics(c *gin.Context) {
 	userSession := middlewares.GetUserSession(c)
 	fromDate := c.Query("fromDate")
 
-	metrics, err := h.assetService.GetDashboardMetrics(c.Request.Context(), userSession, fromDate)
+	metrics, err := h.assetUseCase.GetDashboardMetrics(c.Request.Context(), userSession, fromDate)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -173,12 +186,21 @@ func (h *AssetHandler) GenerateUnitCode(c *gin.Context) {
 		}
 	}
 
-	code := h.assetService.GenerateUnitCode(c.Request.Context(), assetType, purchasedDate, company, area)
+	code := h.assetUseCase.GenerateUnitCode(c.Request.Context(), assetType, purchasedDate, company, area)
 	c.JSON(http.StatusOK, dtos.SuccessResponse(code))
 }
 
 func (h *AssetHandler) GetSuggestions(c *gin.Context) {
-	c.JSON(http.StatusOK, dtos.SuccessResponse(""))
+	var filter dtos.Filter
+	_ = c.ShouldBindJSON(&filter)
+	userSession := middlewares.GetUserSession(c)
+
+	suggestions, err := h.assetUseCase.GetSuggestions(c.Request.Context(), &filter, userSession)
+	if err != nil {
+		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dtos.SuccessResponse(suggestions))
 }
 
 func (h *AssetHandler) GetUnassignedSubAssets(c *gin.Context) {
@@ -199,7 +221,7 @@ func (h *AssetHandler) GetUnassignedSubAssets(c *gin.Context) {
 		}
 	}
 
-	data, total, err := h.assetService.GetUnassignedSubAssets(c.Request.Context(), &filter)
+	data, total, err := h.assetUseCase.GetUnassignedSubAssets(c.Request.Context(), &filter)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -219,7 +241,7 @@ func (h *AssetHandler) UpdateMainAsset(c *gin.Context) {
 		return
 	}
 
-	ok := h.assetService.UpdateMainAsset(c.Request.Context(), unitCode, dto.MainAsset)
+	ok := h.assetUseCase.UpdateMainAsset(c.Request.Context(), unitCode, dto.MainAsset)
 	if !ok {
 		c.JSON(http.StatusNotFound, dtos.ErrorResponse("Asset not found"))
 		return

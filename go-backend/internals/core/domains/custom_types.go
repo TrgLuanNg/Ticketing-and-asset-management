@@ -16,6 +16,10 @@ func NewDateOnly(t time.Time) DateOnly {
 	return DateOnly{Time: time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)}
 }
 
+func NowDateOnly() DateOnly {
+	return NewDateOnly(time.Now())
+}
+
 func (d DateOnly) MarshalJSON() ([]byte, error) {
 	if d.IsZero() {
 		return []byte("null"), nil
@@ -30,21 +34,30 @@ func (d *DateOnly) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
-	// Try standard date format
 	t, err := time.Parse("2006-01-02", s)
 	if err == nil {
 		d.Time = t
 		return nil
 	}
 
-	// Try RFC3339 / ISO format
+	t, err = time.Parse(time.RFC3339Nano, s)
+	if err == nil {
+		d.Time = t
+		return nil
+	}
+
 	t, err = time.Parse(time.RFC3339, s)
 	if err == nil {
 		d.Time = t
 		return nil
 	}
 
-	// Try 2006-01-02T15:04:05 format
+	t, err = time.Parse("2006-01-02T15:04:05.999999999", s)
+	if err == nil {
+		d.Time = t
+		return nil
+	}
+
 	t, err = time.Parse("2006-01-02T15:04:05", s)
 	if err == nil {
 		d.Time = t

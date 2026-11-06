@@ -3,64 +3,38 @@ package services
 import (
 	"context"
 
+	"go-backend/internals/core/domains"
+	"go-backend/internals/core/ports"
 	"go-backend/pkg/logger"
-
-	"github.com/robfig/cron/v3"
-	"gorm.io/gorm"
 )
 
 type AutoSyncService struct {
-	db   *gorm.DB
-	cron *cron.Cron
+	syncRepo ports.AutoSyncRepository
 }
 
-func NewAutoSyncService(db *gorm.DB) *AutoSyncService {
+func NewAutoSyncService(syncRepo ports.AutoSyncRepository) *AutoSyncService {
 	return &AutoSyncService{
-		db:   db,
-		cron: cron.New(),
-	}
-}
-
-func (s *AutoSyncService) StartScheduler(cronSchedule string) {
-	if cronSchedule == "" {
-		cronSchedule = "0 0 * * *" // Midnight daily
-	}
-
-	_, err := s.cron.AddFunc(cronSchedule, func() {
-		logger.Info("Executing automatic synchronization...")
-		_ = s.SyncAll(context.Background())
-	})
-
-	if err != nil {
-		logger.Errorf("Failed to schedule auto-sync cron: %v", err)
-		return
-	}
-
-	s.cron.Start()
-	logger.Infof("AutoSync cron scheduler started with schedule: %s", cronSchedule)
-}
-
-func (s *AutoSyncService) StopScheduler() {
-	if s.cron != nil {
-		s.cron.Stop()
+		syncRepo: syncRepo,
 	}
 }
 
 func (s *AutoSyncService) SyncAD(ctx context.Context) (bool, error) {
-	logger.Info("Syncing Active Directory...")
-	// Logic for AD sync
+	logger.Info("SyncAD invoked (local database mode)")
 	return true, nil
 }
 
 func (s *AutoSyncService) SyncPatchManager(ctx context.Context) (bool, error) {
-	logger.Info("Syncing Patch Manager Plus...")
-	// Logic for PatchManager sync
+	logger.Info("SyncPatchManager invoked (local database mode)")
 	return true, nil
 }
 
 func (s *AutoSyncService) SyncTrendMicro(ctx context.Context) (bool, error) {
-	logger.Info("Syncing Trend Micro Apex Central...")
-	// Logic for TrendMicro sync
+	logger.Info("SyncTrendMicro invoked (local database mode)")
+	return true, nil
+}
+
+func (s *AutoSyncService) SyncMEDetail(ctx context.Context) (bool, error) {
+	logger.Info("SyncMEDetail invoked (local database mode)")
 	return true, nil
 }
 
@@ -72,5 +46,23 @@ func (s *AutoSyncService) SyncAll(ctx context.Context) map[string]bool {
 	results["PatchManager"] = ok
 	ok, _ = s.SyncTrendMicro(ctx)
 	results["TrendMicro"] = ok
+	ok, _ = s.SyncMEDetail(ctx)
+	results["MEDetail"] = ok
 	return results
+}
+
+func (s *AutoSyncService) GetADAssets(ctx context.Context) ([]domains.ASSETSAD, error) {
+	return s.syncRepo.GetADAssets(ctx)
+}
+
+func (s *AutoSyncService) GetTMAssets(ctx context.Context) ([]domains.ASSETSTM, error) {
+	return s.syncRepo.GetTMAssets(ctx)
+}
+
+func (s *AutoSyncService) GetMEAssets(ctx context.Context) ([]domains.ASSETSME, error) {
+	return s.syncRepo.GetMEAssets(ctx)
+}
+
+func (s *AutoSyncService) GetMEDetails(ctx context.Context) ([]domains.ASSETSEMPATCHDETAIL, error) {
+	return s.syncRepo.GetMEDetails(ctx)
 }

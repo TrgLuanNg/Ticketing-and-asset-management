@@ -27,6 +27,12 @@ type HandoverDto struct {
 	DivisionTransfer   string           `json:"divisionTransfer,omitempty"`
 	GroupDepTransfer   string           `json:"groupDepTransfer,omitempty"`
 	EmailTransfer      string           `json:"emailTransfer,omitempty"`
+	HRCode             string           `json:"hrCode,omitempty"`
+	Email              string           `json:"email,omitempty"`
+	State              string           `json:"state,omitempty"`
+	HandoverNo         string           `json:"handoverNo,omitempty"`
+	RetrieveToITD      *bool            `json:"retrieveToITD,omitempty"`
+	TransferSubAssets  *bool            `json:"transferSubAssets,omitempty"`
 }
 
 type DepartmentDto struct {
@@ -69,6 +75,56 @@ type DisposalDto struct {
 	Status     bool             `json:"status"`
 	Note       string           `json:"note"`
 	UserID     string           `json:"userId"`
+}
+
+type TransferWfdRequestDto struct {
+	UnitCodes   []string `json:"unitCodes"`
+	Note        string   `json:"note"`
+	UserSession string   `json:"userSession"`
+}
+
+type ConfirmDisposeRequestDto struct {
+	IDDisposal  string `json:"idDisposal"`
+	Note        string `json:"note"`
+	UserSession string `json:"userSession"`
+}
+
+type CheckUnitCodesRequestDto struct {
+	UnitCodes []string `json:"unitCodes"`
+}
+
+type DisposalBatchDto struct {
+	IDDisposal string           `json:"idDisposal"`
+	StartDate  domains.DateOnly `json:"startDate"`
+	EndDate    domains.DateOnly `json:"endDate"`
+	Status     bool             `json:"status"`
+	Note       string           `json:"note"`
+	UserID     string           `json:"userId"`
+	AssetCount int              `json:"assetCount"`
+}
+
+type DisposalBatchDetailDto struct {
+	UnitCode    string           `json:"unitCode"`
+	IDDisposal  string           `json:"idDisposal"`
+	StartDate   domains.DateOnly `json:"startDate"`
+	EndDate     domains.DateOnly `json:"endDate"`
+	Status      bool             `json:"status"`
+	Note        string           `json:"note"`
+	UserID      string           `json:"userId"`
+	AssetType   string           `json:"assetType"`
+	UserName    string           `json:"userName"`
+	StatusAsset string           `json:"statusAsset"`
+	State       string           `json:"state"`
+}
+
+type UnitCodeCheckResultDto struct {
+	UnitCode string `json:"unitCode"`
+	Valid    bool   `json:"valid"`
+	Error    string `json:"error,omitempty"`
+	Type     string `json:"type,omitempty"`
+	UserName string `json:"userName,omitempty"`
+	Status   string `json:"status,omitempty"`
+	State    string `json:"state,omitempty"`
 }
 
 type SoftwareDto struct {

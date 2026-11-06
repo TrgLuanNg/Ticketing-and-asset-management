@@ -1,1 +1,50 @@
-<!-- SSO Login Redirect -->
+<div class="login-container">
+  <div class="glass-card">
+    <div class="login-header">
+      <div class="logo-image-area">
+        <img src="/assets/images/logo-login.jpg" alt="Logo" class="logo-login-img" />
+      </div>
+      <h2>IT Asset Management</h2>
+      <p>Đăng nhập hệ thống quản lý tài sản</p>
+    </div>
+
+    <form nz-form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+      <nz-form-item>
+        <nz-form-control nzErrorTip="Vui lòng nhập tên tài khoản">
+          <nz-input-group [nzPrefix]="prefixUser">
+            <input type="text" nz-input formControlName="username"/>
+          </nz-input-group>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-control nzErrorTip="Vui lòng nhập mật khẩu">
+          <nz-input-group [nzPrefix]="prefixLock">
+            <input type="password" nz-input formControlName="password"/>
+          </nz-input-group>
+        </nz-form-control>
+      </nz-form-item>
+
+      <button nz-button class="login-button" [nzType]="'primary'" [nzLoading]="loading" nzBlock>
+        Đăng nhập
+      </button>
+
+      <div style="margin: 16px 0; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.6); font-size: 12px;">
+        <span style="flex: 1; height: 1px; background: rgba(255, 255, 255, 0.2);"></span>
+        <span style="padding: 0 10px;">HOẶC</span>
+        <span style="flex: 1; height: 1px; background: rgba(255, 255, 255, 0.2);"></span>
+      </div>
+
+      <button type="button" nz-button nzBlock (click)="loginWithSSO()" style="height: 40px; border-radius: 6px; background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3);">
+        <i nz-icon nzType="safety-certificate"></i> Đăng nhập qua Authelia SSO
+      </button>
+    </form>
+
+    <div class="login-footer">
+      <span>IT Asset Management System &copy; 2026</span>
+    </div>
+  </div>
+</div>
+
+<ng-template #prefixUser><i nz-icon nzType="user"></i></ng-template>
+<ng-template #prefixLock><i nz-icon nzType="lock"></i></ng-template>

@@ -8,32 +8,57 @@ import (
 
 	"go-backend/internals/core/domains"
 	"go-backend/internals/core/dtos"
-	"go-backend/internals/repository"
-	"go-backend/pkg/cache"
-	"go-backend/pkg/utils"
-
-	"gorm.io/gorm"
+	"go-backend/internals/core/ports"
 )
 
 type UserInfoService struct {
-	userRepo *repository.UserRepository
-	db       *gorm.DB
-	cache    *cache.MemoryCache
-	crypt    *utils.CryptLib
+	userRepo  ports.UserRepository
+	txManager ports.TransactionManager
+	hasher    ports.PasswordHasherPort
+	cache     ports.CacheProvider
 }
 
-func NewUserInfoService(userRepo *repository.UserRepository, db *gorm.DB) *UserInfoService {
+func NewUserInfoService(
+	userRepo ports.UserRepository,
+	txManager ports.TransactionManager,
+	hasher ports.PasswordHasherPort,
+	cache ports.CacheProvider,
+) *UserInfoService {
 	return &UserInfoService{
-		userRepo: userRepo,
-		db:       db,
-		cache:    cache.GetCache(),
-		crypt:    utils.NewCryptLib(),
+		userRepo:  userRepo,
+		txManager: txManager,
+		hasher:    hasher,
+		cache:     cache,
 	}
+}
+
+func (s *UserInfoService) Search(ctx context.Context, filter *dtos.Filter) ([]dtos.UserInfoDto, int64, error) {
+	users, total, err := s.userRepo.FindPaged(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	res := make([]dtos.UserInfoDto, len(users))
+	for i := range users {
+		res[i] = *s.mapUserToDto(ctx, &users[i], false)
+	}
+	return res, total, nil
+}
+
+func (s *UserInfoService) GetAll(ctx context.Context) ([]dtos.UserInfoDto, error) {
+	users, err := s.userRepo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]dtos.UserInfoDto, len(users))
+	for i := range users {
+		res[i] = *s.mapUserToDto(ctx, &users[i], false)
+	}
+	return res, nil
 }
 
 func (s *UserInfoService) GetByID(ctx context.Context, userID string) (*dtos.UserInfoDto, error) {
 	user, err := s.userRepo.FindByUserID(ctx, userID)
-	if err != nil {
+	if err != nil || user == nil {
 		return nil, errors.New("user not found")
 	}
 
@@ -41,6 +66,10 @@ func (s *UserInfoService) GetByID(ctx context.Context, userID string) (*dtos.Use
 		return nil, errors.New("user is inactive")
 	}
 
+	return s.mapUserToDto(ctx, user, true), nil
+}
+
+func (s *UserInfoService) mapUserToDto(ctx context.Context, user *domains.USERINFO, loadPermissions bool) *dtos.UserInfoDto {
 	dto := &dtos.UserInfoDto{
 		UserID:      user.UserID,
 		UserName:    user.UserName,
@@ -54,38 +83,40 @@ func (s *UserInfoService) GetByID(ctx context.Context, userID string) (*dtos.Use
 		dto.Roles = []string{user.Role}
 	}
 
-	isAdmin := strings.EqualFold(user.Role, "admin")
-	isViewer := strings.EqualFold(user.Role, "viewer")
+	if loadPermissions {
+		isAdmin := strings.EqualFold(user.Role, "admin")
+		isViewer := strings.EqualFold(user.Role, "viewer")
 
-	if !isViewer {
-		perm, _ := s.userRepo.FindPermission(ctx, user.UserID)
-		if perm == nil {
-			if isAdmin {
-				dto.Permissions = []string{
-					"AssetsModify", "AssetsDel", "DepartmentModify", "DepartmentDel",
-					"TypeModify", "TypeDel", "UserManager", "Disposal", "PermissionApproval", "AllowSeeAllFromAllowedAreas",
+		if !isViewer {
+			perm, _ := s.userRepo.FindPermission(ctx, user.UserID)
+			if perm == nil {
+				if isAdmin {
+					dto.Permissions = []string{
+						"AssetsModify", "AssetsDel", "DepartmentModify", "DepartmentDel",
+						"TypeModify", "TypeDel", "UserManager", "Disposal", "PermissionApproval", "AllowSeeAllFromAllowedAreas",
+					}
 				}
-			}
-		} else {
-			addPerm := func(name string, val *bool) {
-				if (val != nil && *val) || (val == nil && isAdmin) {
-					dto.Permissions = append(dto.Permissions, name)
+			} else {
+				addPerm := func(name string, val *bool) {
+					if (val != nil && *val) || (val == nil && isAdmin) {
+						dto.Permissions = append(dto.Permissions, name)
+					}
 				}
+				addPerm("AssetsModify", perm.AssetsModify)
+				addPerm("AssetsDel", perm.AssetsDel)
+				addPerm("DepartmentModify", perm.DepartmentModify)
+				addPerm("DepartmentDel", perm.DepartmentDel)
+				addPerm("TypeModify", perm.TypeModify)
+				addPerm("TypeDel", perm.TypeDel)
+				addPerm("UserManager", perm.UserManager)
+				addPerm("Disposal", perm.Disposal)
+				addPerm("PermissionApproval", perm.PermissionApproval)
+				addPerm("AllowSeeAllFromAllowedAreas", perm.AllowSeeAllFromAllowedAreas)
 			}
-			addPerm("AssetsModify", perm.AssetsModify)
-			addPerm("AssetsDel", perm.AssetsDel)
-			addPerm("DepartmentModify", perm.DepartmentModify)
-			addPerm("DepartmentDel", perm.DepartmentDel)
-			addPerm("TypeModify", perm.TypeModify)
-			addPerm("TypeDel", perm.TypeDel)
-			addPerm("UserManager", perm.UserManager)
-			addPerm("Disposal", perm.Disposal)
-			addPerm("PermissionApproval", perm.PermissionApproval)
-			addPerm("AllowSeeAllFromAllowedAreas", perm.AllowSeeAllFromAllowedAreas)
 		}
 	}
 
-	return dto, nil
+	return dto
 }
 
 func (s *UserInfoService) GetHistory(ctx context.Context, userID string) ([]dtos.HistoryDto, error) {
@@ -117,18 +148,17 @@ func (s *UserInfoService) ChangePassword(ctx context.Context, requesterId string
 	}
 
 	if dto.OldPassword != "" {
-		encryptedOld, _ := s.crypt.Encrypt(dto.OldPassword, "Inventory", "DB")
-		if user.Pass != dto.OldPassword && user.Pass != encryptedOld {
+		if !s.hasher.VerifyPassword(user.Pass, dto.OldPassword) {
 			return errors.New("current password is incorrect")
 		}
 	}
 
-	encryptedNew, err := s.crypt.Encrypt(dto.NewPassword, "Inventory", "DB")
+	hashedPass, err := s.hasher.HashPassword(dto.NewPassword)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt password: %w", err)
+		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	user.Pass = encryptedNew
+	user.Pass = hashedPass
 	err = s.userRepo.UpdateUser(ctx, user)
 	if err == nil {
 		s.userRepo.AddHistory(ctx, requesterId, "Changed password")
@@ -159,42 +189,65 @@ func (s *UserInfoService) Insert(ctx context.Context, requesterId string, dto *d
 	if role == "" && len(dto.Roles) > 0 {
 		role = dto.Roles[0]
 	}
-
-	user := domains.USERINFO{
-		UserID:      dto.UserID,
-		UserName:    dto.UserName,
-		Description: dto.Description,
-		Area:        dto.Area,
-		Role:        role,
-		IsActive:    dto.IsActive,
+	if role == "" {
+		role = "User"
 	}
 
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&user).Error; err != nil {
+	rawPass := strings.TrimSpace(dto.Pass)
+	if rawPass == "" {
+		rawPass = "whatever"
+	}
+	hashedPass, err := s.hasher.HashPassword(rawPass)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	isActive := true
+	if dto.IsActive != nil {
+		isActive = *dto.IsActive
+	}
+	zero := 0
+
+	user := domains.USERINFO{
+		UserID:              dto.UserID,
+		UserName:            dto.UserName,
+		Pass:                hashedPass,
+		Description:         dto.Description,
+		Area:                dto.Area,
+		Role:                role,
+		IsActive:            &isActive,
+		FailedLoginAttempts: &zero,
+	}
+
+	err = s.txManager.RunInTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.userRepo.CreateUser(txCtx, &user); err != nil {
 			return err
 		}
 
 		f := false
 		defaultPerm := domains.PERMISSION{
-			UserID:                     user.UserID,
-			AssetsModify:               &f,
-			AssetsDel:                  &f,
-			DepartmentModify:           &f,
-			DepartmentDel:              &f,
-			TypeModify:                 &f,
-			TypeDel:                    &f,
-			UserManager:                &f,
-			Disposal:                   &f,
-			PermissionApproval:         &f,
+			UserID:                      user.UserID,
+			AssetsModify:                &f,
+			AssetsDel:                   &f,
+			DepartmentModify:            &f,
+			DepartmentDel:               &f,
+			TypeModify:                  &f,
+			TypeDel:                     &f,
+			UserManager:                 &f,
+			Disposal:                    &f,
+			PermissionApproval:          &f,
 			AllowSeeAllFromAllowedAreas: &f,
 		}
-		return tx.Create(&defaultPerm).Error
+		return s.userRepo.CreatePermission(txCtx, &defaultPerm)
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
+	dto.Pass = ""
+	dto.Role = role
+	dto.IsActive = &isActive
 	s.userRepo.AddHistory(ctx, requesterId, fmt.Sprintf("Created user %s", user.UserID))
 	return dto, nil
 }
@@ -204,8 +257,8 @@ func (s *UserInfoService) Update(ctx context.Context, requesterId string, id str
 	isAdmin := requesterUser != nil && strings.EqualFold(requesterUser.Role, "admin")
 	requesterPerm, _ := s.userRepo.FindPermission(ctx, requesterId)
 
-	hasPermissionApproval := (requesterPerm == nil && isAdmin) || (requesterPerm != nil && requesterPerm.PermissionApproval != nil && *requesterPerm.PermissionApproval)
-	hasUserManager := (requesterPerm == nil && isAdmin) || (requesterPerm != nil && requesterPerm.UserManager != nil && *requesterPerm.UserManager)
+	hasPermissionApproval := (requesterPerm == nil && isAdmin) || (requesterPerm != nil && requesterPerm.PermissionApproval != nil && *requesterPerm.PermissionApproval) || (requesterPerm != nil && requesterPerm.PermissionApproval == nil && isAdmin)
+	hasUserManager := (requesterPerm == nil && isAdmin) || (requesterPerm != nil && requesterPerm.UserManager != nil && *requesterPerm.UserManager) || (requesterPerm != nil && requesterPerm.UserManager == nil && isAdmin)
 
 	if !hasPermissionApproval && !hasUserManager {
 		return errors.New("you do not have permission to modify user settings")
@@ -216,18 +269,48 @@ func (s *UserInfoService) Update(ctx context.Context, requesterId string, id str
 		role = dto.Roles[0]
 	}
 
-	err := s.db.WithContext(ctx).Model(&domains.USERINFO{}).
-		Where("\"UserID\" = ?", id).
-		Updates(map[string]interface{}{
-			"UserName":    dto.UserName,
-			"Description": dto.Description,
-			"Area":        dto.Area,
-			"Role":        role,
-			"IsActive":    dto.IsActive,
-		}).Error
+	fields := map[string]any{
+		"UserName":    dto.UserName,
+		"Description": dto.Description,
+		"Area":        dto.Area,
+		"Role":        role,
+	}
+	if dto.IsActive != nil {
+		fields["IsActive"] = *dto.IsActive
+	}
 
-	// Evict memory cache for user allowed areas
-	s.cache.Remove(fmt.Sprintf("user_areas_%s", id))
-	s.userRepo.AddHistory(ctx, requesterId, fmt.Sprintf("Updated user %s", id))
+	err := s.userRepo.UpdateUserFields(ctx, id, fields)
+	if s.cache != nil {
+		s.cache.Remove(fmt.Sprintf("user_areas_%s", id))
+	}
+	if err == nil {
+		s.userRepo.AddHistory(ctx, requesterId, fmt.Sprintf("Updated user %s", id))
+	}
 	return err
+}
+
+func (s *UserInfoService) Delete(ctx context.Context, requesterId string, id string) error {
+	requesterUser, _ := s.userRepo.FindByUserID(ctx, requesterId)
+	isAdmin := requesterUser != nil && strings.EqualFold(requesterUser.Role, "admin")
+	requesterPerm, _ := s.userRepo.FindPermission(ctx, requesterId)
+	hasUserManager := (requesterPerm == nil && isAdmin) || (requesterPerm != nil && requesterPerm.UserManager != nil && *requesterPerm.UserManager) || (requesterPerm != nil && requesterPerm.UserManager == nil && isAdmin)
+
+	if !hasUserManager {
+		return errors.New("you do not have permission to manage users")
+	}
+
+	err := s.userRepo.DeleteUser(ctx, id)
+	if s.cache != nil {
+		s.cache.Remove(fmt.Sprintf("user_areas_%s", id))
+	}
+	if err == nil {
+		s.userRepo.AddHistory(ctx, requesterId, fmt.Sprintf("Deleted user %s", id))
+	}
+	return err
+}
+
+func (s *UserInfoService) Logout(ctx context.Context, userSession string) {
+	if strings.TrimSpace(userSession) != "" {
+		s.userRepo.AddHistory(ctx, userSession, "Logged out of the system")
+	}
 }

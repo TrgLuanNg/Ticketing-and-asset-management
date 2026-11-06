@@ -7,6 +7,7 @@ import (
 
 	"go-backend/configs"
 	"go-backend/pkg/logger"
+	"go-backend/pkg/utils"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
@@ -63,8 +64,60 @@ func InitDB(cfg *configs.Config) (*gorm.DB, error) {
 		logger.Errorf("Warning: Database ping failed: %v", err)
 	} else {
 		logger.Info("Database connection established successfully!")
+		ensurePasswordSchemaAndHashes(db, driver)
 	}
 
 	DB = db
 	return db, nil
+}
+
+// ensurePasswordSchemaAndHashes ensures the user_info.pass column is wide enough for 60-char bcrypt hashes
+// and migrates any legacy non-bcrypt password records in-place to bcrypt hashes.
+func ensurePasswordSchemaAndHashes(db *gorm.DB, driver string) {
+	if driver == "" || driver == "postgres" || driver == "postgresql" {
+		var maxLen int
+		err := db.Raw(`
+			SELECT COALESCE(character_maximum_length, 0)
+			FROM information_schema.columns
+			WHERE table_schema = 'public' AND table_name = 'user_info' AND column_name = 'pass'
+		`).Scan(&maxLen).Error
+		if err == nil && maxLen > 0 && maxLen < 255 {
+			logger.Infof("Upgrading user_info.pass column from VARCHAR(%d) to VARCHAR(255) for bcrypt hashes...", maxLen)
+			_ = db.Exec(`DROP VIEW IF EXISTS "USERINFO"`).Error
+			_ = db.Exec(`ALTER TABLE user_info ALTER COLUMN pass TYPE VARCHAR(255)`).Error
+			_ = db.Exec(`
+				CREATE OR REPLACE VIEW "USERINFO" AS
+				SELECT
+					user_id AS "UserID",
+					pass AS "Pass",
+					user_name AS "UserName",
+					description AS "Description",
+					area AS "Area",
+					role AS "Role",
+					is_active AS "IsActive",
+					failed_login_attempts AS "FailedLoginAttempts",
+					lockout_end AS "LockoutEnd"
+				FROM user_info
+			`).Error
+		}
+	}
+
+	type userPassRow struct {
+		UserID string `gorm:"column:UserID"`
+		Pass   string `gorm:"column:Pass"`
+	}
+	var rows []userPassRow
+	if err := db.Table("USERINFO").Select(`"UserID", "Pass"`).Find(&rows).Error; err != nil {
+		return
+	}
+
+	hasher := utils.NewPasswordHasher()
+	for _, r := range rows {
+		if r.Pass != "" && !utils.IsBcryptHash(r.Pass) {
+			if hashed, err := hasher.HashPassword(r.Pass); err == nil {
+				_ = db.Table("USERINFO").Where(`"UserID" = ?`, r.UserID).Update("Pass", hashed).Error
+				logger.Infof("Migrated user %s password to salted bcrypt hash", r.UserID)
+			}
+		}
+	}
 }

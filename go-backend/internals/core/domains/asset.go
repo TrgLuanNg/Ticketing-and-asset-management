@@ -51,6 +51,13 @@ type ASSET struct {
 	VendorName     string `gorm:"-" json:"vendorName,omitempty"`
 	StateName      string `gorm:"-" json:"stateName,omitempty"`
 	DivisionName   string `gorm:"-" json:"divisionName,omitempty"`
+	GroupDepName   string `gorm:"-" json:"groupDepName,omitempty"`
+	AD             bool   `gorm:"-" json:"ad"`
+	ME             bool   `gorm:"-" json:"me"`
+	TM             bool   `gorm:"-" json:"tm"`
+	AdOS           string `gorm:"-" json:"adOS,omitempty"`
+	MeTime         string `gorm:"-" json:"meTime,omitempty"`
+	TmTime         string `gorm:"-" json:"tmTime,omitempty"`
 }
 
 func (ASSET) TableName() string {
@@ -79,5 +86,5 @@ type ASSETSLOG struct {
 }
 
 func (ASSETSLOG) TableName() string {
-	return "ASSETSLOG"
+	return "ASSETSLOGS"
 }

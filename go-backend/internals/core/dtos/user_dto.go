@@ -3,14 +3,17 @@ package dtos
 import "time"
 
 type UserInfoDto struct {
-	UserID      string   `json:"userId"`
-	UserName    string   `json:"userName"`
-	Description string   `json:"description"`
-	Area        string   `json:"area"`
-	Role        string   `json:"role"`
-	IsActive    *bool    `json:"isActive"`
-	Roles       []string `json:"roles"`
-	Permissions []string `json:"permissions"`
+	UserID              string     `json:"userId"`
+	Pass                string     `json:"pass,omitempty"`
+	UserName            string     `json:"userName"`
+	Description         string     `json:"description"`
+	Area                string     `json:"area"`
+	Role                string     `json:"role"`
+	IsActive            *bool      `json:"isActive"`
+	FailedLoginAttempts *int       `json:"failedLoginAttempts,omitempty"`
+	LockoutEnd          *time.Time `json:"lockoutEnd,omitempty"`
+	Roles               []string   `json:"roles"`
+	Permissions         []string   `json:"permissions"`
 }
 
 type PermissionDto struct {
@@ -24,7 +27,7 @@ type PermissionDto struct {
 	UserManager                *bool  `json:"userManager"`
 	Disposal                   *bool  `json:"disposal"`
 	PermissionApproval         *bool  `json:"permissionApproval"`
-	AllowSeeAllFromAllowedAreas *bool  `json:"allowSeeAllFromAllowedAreas"`
+	AllowSeeAllFromAllowedAreas *bool  `gorm:"column:AllowSeeAllFromAllowedAreas" json:"allowSeeAllFromAllowedAreas"`
 }
 
 type HistoryDto struct {

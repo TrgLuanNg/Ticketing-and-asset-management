@@ -12,25 +12,37 @@ import (
 	"go-backend/configs"
 	"go-backend/internals/core/domains"
 	"go-backend/internals/core/dtos"
-	"go-backend/internals/repository"
-	"go-backend/pkg/cache"
+	"go-backend/internals/core/ports"
 	"go-backend/pkg/logger"
 	"go-backend/pkg/utils"
 )
 
-type AuthService struct {
-	userRepo *repository.UserRepository
-	cache    *cache.MemoryCache
-	crypt    *utils.CryptLib
-	cfg      *configs.Config
+type cachedUserAreas struct {
+	Areas  []string
+	SeeAll bool
 }
 
-func NewAuthService(userRepo *repository.UserRepository, cfg *configs.Config) *AuthService {
+type AuthService struct {
+	userRepo    ports.UserRepository
+	ssoProvider ports.SSOProvider
+	hasher      ports.PasswordHasherPort
+	cache       ports.CacheProvider
+	cfg         *configs.Config
+}
+
+func NewAuthService(
+	userRepo ports.UserRepository,
+	ssoProvider ports.SSOProvider,
+	hasher ports.PasswordHasherPort,
+	cache ports.CacheProvider,
+	cfg *configs.Config,
+) *AuthService {
 	return &AuthService{
-		userRepo: userRepo,
-		cache:    cache.GetCache(),
-		crypt:    utils.NewCryptLib(),
-		cfg:      cfg,
+		userRepo:    userRepo,
+		ssoProvider: ssoProvider,
+		hasher:      hasher,
+		cache:       cache,
+		cfg:         cfg,
 	}
 }
 
@@ -40,7 +52,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*dt
 	}
 
 	user, err := s.userRepo.FindByUserID(ctx, username)
-	if err != nil {
+	if err != nil || user == nil {
 		return nil, errors.New("invalid username or password")
 	}
 
@@ -56,9 +68,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*dt
 		return nil, errors.New("user account is temporarily locked due to failed login attempts. Please try again later")
 	}
 
-	// Verify password: check plaintext or AES-256-CBC encrypted
-	encryptedInput, _ := s.crypt.Encrypt(password, "Inventory", "DB")
-	isValid := (user.Pass == password || (encryptedInput != "" && user.Pass == encryptedInput))
+	isValid := s.hasher.VerifyPassword(user.Pass, password)
 
 	if !isValid {
 		failedCount := 0
@@ -87,7 +97,10 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*dt
 }
 
 func (s *AuthService) GetResource(ctx context.Context, authCode string) (*dtos.LoginResponseDto, error) {
-	claims, _, err := s.userRepo.GetSSOUserInfo(authCode, &s.cfg.SSO)
+	if s.ssoProvider == nil {
+		return nil, errors.New("SSO provider is not configured")
+	}
+	claims, _, err := s.ssoProvider.GetSSOUserInfo(authCode)
 	if err != nil {
 		return nil, fmt.Errorf("SSO verification failed: %w", err)
 	}
@@ -123,15 +136,21 @@ func (s *AuthService) GetResource(ctx context.Context, authCode string) (*dtos.L
 	logger.Infof("SSO token claims resolved: UserID=%s, UserName=%s", userId, userName)
 
 	user, err := s.userRepo.FindByUserID(ctx, userId)
-	if err != nil {
+	if err != nil || user == nil {
 		role := "User"
 		if strings.EqualFold(userId, "admin") {
 			role = "Admin"
 		}
+		hashedPass, _ := s.hasher.HashPassword("whatever")
+		active := true
+		zero := 0
 		newUser := &domains.USERINFO{
-			UserID:   userId,
-			UserName: userName,
-			Role:     role,
+			UserID:              userId,
+			UserName:            userName,
+			Pass:                hashedPass,
+			Role:                role,
+			IsActive:            &active,
+			FailedLoginAttempts: &zero,
 		}
 		_ = s.userRepo.UpdateUser(ctx, newUser)
 		user = newUser
@@ -149,7 +168,7 @@ func (s *AuthService) GetResource(ctx context.Context, authCode string) (*dtos.L
 
 func (s *AuthService) RefreshSession(ctx context.Context, refreshTokenStr string) (*dtos.LoginResponseDto, error) {
 	refreshToken, err := s.userRepo.FindRefreshToken(ctx, refreshTokenStr)
-	if err != nil {
+	if err != nil || refreshToken == nil {
 		return nil, errors.New("refresh token does not exist")
 	}
 
@@ -162,7 +181,7 @@ func (s *AuthService) RefreshSession(ctx context.Context, refreshTokenStr string
 	}
 
 	user, err := s.userRepo.FindByUserID(ctx, refreshToken.UserID)
-	if err != nil || (user.Role != "" && strings.EqualFold(user.Role, "Inactive")) {
+	if err != nil || user == nil || (user.Role != "" && strings.EqualFold(user.Role, "Inactive")) {
 		return nil, errors.New("user associated with this refresh token not found or is inactive")
 	}
 
@@ -259,15 +278,16 @@ func (s *AuthService) generateRandomToken() string {
 }
 
 func (s *AuthService) GetUserAllowedAreas(ctx context.Context, userID string) ([]string, bool) {
+	if strings.TrimSpace(userID) == "" {
+		return []string{}, false
+	}
+
 	cacheKey := fmt.Sprintf("user_areas_%s", userID)
-	if val, found := s.cache.Get(cacheKey); found {
-		if res, ok := val.([]string); ok {
-			for _, a := range res {
-				if strings.EqualFold(a, "ALL") {
-					return res, true
-				}
+	if s.cache != nil {
+		if val, found := s.cache.Get(cacheKey); found {
+			if res, ok := val.(cachedUserAreas); ok {
+				return res.Areas, res.SeeAll
 			}
-			return res, false
 		}
 	}
 
@@ -276,13 +296,9 @@ func (s *AuthService) GetUserAllowedAreas(ctx context.Context, userID string) ([
 		return []string{}, false
 	}
 
-	if strings.EqualFold(user.Role, "admin") {
-		s.cache.Set(cacheKey, []string{"ALL"}, 30*time.Minute)
-		return []string{"ALL"}, true
-	}
-
+	isAdmin := strings.EqualFold(user.Role, "admin")
 	var areas []string
-	if user.Area != "" {
+	if strings.TrimSpace(user.Area) != "" {
 		for _, a := range strings.Split(user.Area, ",") {
 			trimmed := strings.TrimSpace(a)
 			if trimmed != "" {
@@ -291,9 +307,28 @@ func (s *AuthService) GetUserAllowedAreas(ctx context.Context, userID string) ([
 		}
 	}
 
-	perm, _ := s.userRepo.FindPermission(ctx, userID)
-	seeAll := (perm != nil && perm.AllowSeeAllFromAllowedAreas != nil && *perm.AllowSeeAllFromAllowedAreas)
+	if len(areas) == 0 {
+		if isAdmin {
+			areas = []string{"ALL"}
+		} else {
+			areas = []string{"VN"}
+		}
+	}
 
-	s.cache.Set(cacheKey, areas, 30*time.Minute)
+	perm, _ := s.userRepo.FindPermission(ctx, userID)
+	var seeAll bool
+	if isAdmin {
+		seeAll = perm == nil || perm.AllowSeeAllFromAllowedAreas == nil || *perm.AllowSeeAllFromAllowedAreas
+	} else {
+		seeAll = perm != nil && perm.AllowSeeAllFromAllowedAreas != nil && *perm.AllowSeeAllFromAllowedAreas
+	}
+
+	if s.cache != nil {
+		s.cache.Set(cacheKey, cachedUserAreas{
+			Areas:  areas,
+			SeeAll: seeAll,
+		}, 30*time.Minute)
+	}
+
 	return areas, seeAll
 }

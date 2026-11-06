@@ -586,29 +586,12 @@ export class AssetDetail implements OnInit {
 
     this.assetForm.get('type')?.valueChanges.subscribe(val => {
       if (val && !this.selectedAsset) {
-        const typeUpper = val.toUpperCase();
-        if (typeUpper === 'DPC') {
-          this.subAssetForm.patchValue({
-            hasMonitor: true,
-            hasUps: true,
-            hasMouse: true,
-            hasKeyboard: true
-          });
-        } else if (typeUpper === 'LTP') {
-          this.subAssetForm.patchValue({
-            hasMonitor: true,
-            hasUps: false,
-            hasMouse: true,
-            hasKeyboard: true
-          });
-        } else {
-          this.subAssetForm.patchValue({
-            hasMonitor: false,
-            hasUps: false,
-            hasMouse: false,
-            hasKeyboard: false
-          });
-        }
+        this.subAssetForm.patchValue({
+          hasMonitor: false,
+          hasUps: false,
+          hasMouse: false,
+          hasKeyboard: false
+        });
         this.autoGenerateUnitCode();
       }
     });
@@ -821,7 +804,7 @@ export class AssetDetail implements OnInit {
       advancedFilters: [{ field: 'MainAsset', operator: '==', value: data.unitCode }]
     }).subscribe((res: any) => {
       if (res.status && res.data) {
-        const subAssets: any[] = res.data;
+        const subAssets: any[] = (res.data || []).filter((sub: any) => sub.unitCode !== data.unitCode && (sub.mainAsset === data.unitCode || sub.MainAsset === data.unitCode));
         this.loadedSubAssets = subAssets;
         subAssets.forEach(sub => {
 
@@ -2296,7 +2279,7 @@ export class AssetDetail implements OnInit {
       advancedFilters: [{ field: 'MainAsset', operator: '==', value: mainUnitCode }]
     }).subscribe((res: any) => {
       if (res.status && res.data) {
-        this.loadedSubAssets = res.data;
+        this.loadedSubAssets = (res.data || []).filter((sub: any) => sub.unitCode !== mainUnitCode && (sub.mainAsset === mainUnitCode || sub.MainAsset === mainUnitCode));
         this.loadedSubAssets.forEach(sub => {
           const typeUpper = sub.type?.toUpperCase();
           const prefix = this.getSubAssetControlPrefix(typeUpper);

@@ -1,17 +1,17 @@
 package dtos
 
 type LoginDto struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type ChangePasswordDto struct {
 	OldPassword string `json:"oldPassword"`
-	NewPassword string `json:"newPassword" binding:"required"`
+	NewPassword string `json:"newPassword"`
 }
 
 type RefreshRequestDto struct {
-	RefreshToken string `json:"refreshToken" binding:"required"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 type LoginResponseDto struct {

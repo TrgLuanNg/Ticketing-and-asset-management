@@ -41,38 +41,30 @@ export class Login implements OnInit {
       return;
     }
 
-    const ssoHost = environment.authConfig.host;
-    const clientId = environment.authConfig.client_id;
-    const callbackUrl = environment.authConfig.callback_path;
-    
-    if (ssoHost.includes('9091') || ssoHost.includes('authelia') || ssoHost.includes('127.0.0.1')) {
-      const state = Array.from(window.crypto.getRandomValues(new Uint8Array(16)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      window.location.href = `${ssoHost}/api/oidc/authorization?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&response_type=code&scope=openid%20profile%20email&state=${state}`;
-    } else {
-      window.location.href = `${ssoHost}?clientId=${clientId}&callbackUrl=${callbackUrl}`;
-    }
+    this.loginForm = this.fb.group({
+      username: ['', [Validators.required]],
+      password: ['', [Validators.required]]
+    });
   }
 
   onSubmit() {
     if (this.loginForm.valid) {
       this.loading = true;
-      this.userService.login(this.loginForm.value).subscribe({
+      const { username, password } = this.loginForm.value;
+      this.userService.login({ username, password }).subscribe({
         next: (res: any) => {
           this.loading = false;
           if (res.status && res.data) {
             localStorage.setItem('currentUser', JSON.stringify(res.data));
-            this.message.success('Welcome back, ' + (res.data.userName || res.data.userID) + '!');
+            this.message.success('Đăng nhập thành công!');
             this.router.navigate(['/']);
           } else {
-            this.message.error(res.message || 'Login failed. Please check your credentials.');
+            this.message.error(res.message || 'Tài khoản hoặc mật khẩu không chính xác.');
           }
         },
         error: (err) => {
           this.loading = false;
-          console.error(err);
-          this.message.error(err.error?.message || 'Login failed. Server error.');
+          this.message.error(err.error?.message || 'Không thể kết nối đến máy chủ.');
         }
       });
     } else {
@@ -82,6 +74,21 @@ export class Login implements OnInit {
           control.updateValueAndValidity({ onlySelf: true });
         }
       });
+    }
+  }
+
+  loginWithSSO() {
+    const ssoHost = environment.authConfig.host;
+    const clientId = environment.authConfig.client_id;
+    const callbackUrl = environment.authConfig.callback_path;
+
+    if (ssoHost.includes('9091') || ssoHost.includes('authelia') || ssoHost.includes('127.0.0.1')) {
+      const state = Array.from(window.crypto.getRandomValues(new Uint8Array(16)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      window.location.href = `${ssoHost}/api/oidc/authorization?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&response_type=code&scope=openid%20profile%20email&state=${state}`;
+    } else {
+      window.location.href = `${ssoHost}?clientId=${clientId}&callbackUrl=${callbackUrl}`;
     }
   }
 }

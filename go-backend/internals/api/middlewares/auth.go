@@ -21,11 +21,13 @@ func TokenValidationMiddleware(secretKey string) gin.HandlerFunc {
 			path == "/api/auths" ||
 			path == "/api/auths/login" ||
 			path == "/api/users/login" ||
+			path == "/api/userinfos/login" ||
 			path == "/api/auths/refresh" ||
 			strings.HasPrefix(path, "/api/auths") ||
 			strings.HasPrefix(path, "/openapi") ||
 			strings.Contains(path, "swagger") ||
-			strings.HasPrefix(path, "/ws") {
+			strings.HasPrefix(path, "/ws") ||
+			strings.HasPrefix(path, "/debug/pprof") {
 			c.Next()
 			return
 		}
@@ -37,10 +39,27 @@ func TokenValidationMiddleware(secretKey string) gin.HandlerFunc {
 		}
 
 		tokenStr := strings.TrimSpace(authHeader[7:])
-		claims, err := utils.DecodeUnverifiedClaims(tokenStr)
-		if err != nil || len(claims) == 0 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, dtos.ErrorResponse("Failed to decode token."))
-			return
+
+		var claims map[string]any
+		if secretKey != "" {
+			if verifiedClaims, err := utils.ValidateJWT(tokenStr, secretKey); err == nil && verifiedClaims != nil {
+				claims = map[string]any{
+					"nameid":      verifiedClaims.UserID,
+					"unique_name": verifiedClaims.UserName,
+					"sub":         verifiedClaims.Subject,
+				}
+				if verifiedClaims.ExpiresAt != nil {
+					claims["exp"] = float64(verifiedClaims.ExpiresAt.Unix())
+				}
+			}
+		}
+		if len(claims) == 0 {
+			decodedClaims, err := utils.DecodeUnverifiedClaims(tokenStr)
+			if err != nil || len(decodedClaims) == 0 {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, dtos.ErrorResponse("Failed to decode token."))
+				return
+			}
+			claims = decodedClaims
 		}
 
 		// Verify expiration
@@ -60,11 +79,15 @@ func TokenValidationMiddleware(secretKey string) gin.HandlerFunc {
 
 		// Extract User ID from claims
 		tokenUserId := ""
-		if v, ok := claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"].(string); ok {
+		if v, ok := claims["preferred_username"].(string); ok && v != "" {
 			tokenUserId = v
-		} else if v, ok := claims["nameid"].(string); ok {
+		} else if v, ok := claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"].(string); ok && v != "" {
 			tokenUserId = v
-		} else if v, ok := claims["sub"].(string); ok {
+		} else if v, ok := claims["nameid"].(string); ok && v != "" {
+			tokenUserId = v
+		} else if v, ok := claims["sub"].(string); ok && v != "" {
+			tokenUserId = v
+		} else if v, ok := claims["unique_name"].(string); ok && v != "" {
 			tokenUserId = v
 		}
 

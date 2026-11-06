@@ -1,31 +1,33 @@
 package domains
 
 type HANDOVER struct {
-	ID                 string    `gorm:"column:ID;primaryKey;type:varchar(50)" json:"id"`
-	UnitCode           string    `gorm:"column:UnitCode;type:varchar(21)" json:"unitCode"`
-	HandoverDate       DateOnly  `gorm:"column:HandoverDate" json:"handoverDate"`
-	UserCreated        string    `gorm:"column:UserCreated;type:varchar(50)" json:"userCreated"`
-	Form               string    `gorm:"column:Form;type:varchar(50)" json:"form"`
-	UserTransfer       string    `gorm:"column:UserTransfer;type:varchar(100)" json:"userTransfer"`
-	DepartmentTransfer string    `gorm:"column:DepartmentTransfer;type:varchar(50)" json:"departmentTransfer"`
-	OfficeTransfer     string    `gorm:"column:OfficeTransfer;type:varchar(50)" json:"officeTransfer"`
-	CompanyTransfer    string    `gorm:"column:CompanyTransfer;type:varchar(50)" json:"companyTransfer"`
-	AreaTransfer       string    `gorm:"column:AreaTransfer;type:varchar(50)" json:"areaTransfer"`
-	Type               string    `gorm:"column:Type;type:varchar(50)" json:"type"`
-	JiraCode           string    `gorm:"column:JiraCode;type:varchar(50)" json:"jiraCode"`
-	Detail1            string    `gorm:"column:Detail1;type:varchar(150)" json:"detail1"`
-	Detail2            string    `gorm:"column:Detail2;type:varchar(150)" json:"detail2"`
-	Detail3            string    `gorm:"column:Detail3;type:varchar(150)" json:"detail3"`
-	Detail4            string    `gorm:"column:Detail4;type:varchar(150)" json:"detail4"`
-	Detail5            string    `gorm:"column:Detail5;type:varchar(150)" json:"detail5"`
-	Detail6            string    `gorm:"column:Detail6;type:varchar(150)" json:"detail6"`
-	Detail7            string    `gorm:"column:Detail7;type:varchar(150)" json:"detail7"`
-	Detail8            string    `gorm:"column:Detail8;type:varchar(150)" json:"detail8"`
-	Detail9            string    `gorm:"column:Detail9;type:varchar(150)" json:"detail9"`
+	ID                 string   `gorm:"column:ID;primaryKey;type:varchar(50)" json:"id"`
+	UnitCode           string   `gorm:"column:UnitCode;primaryKey;type:varchar(21)" json:"unitCode"`
+	HandoverDate       DateOnly `gorm:"column:HandoverDate" json:"handoverDate"`
+	UserCreated        string   `gorm:"column:UserCreated;type:varchar(50)" json:"userCreated"`
+	Form               string   `gorm:"column:Form;type:varchar(50)" json:"form"`
+	UserTransfer       string   `gorm:"column:UserTransfer;type:varchar(100)" json:"userTransfer"`
+	DepartmentTransfer string   `gorm:"column:DepartmentTransfer;type:varchar(50)" json:"departmentTransfer"`
+	OfficeTransfer     string   `gorm:"column:OfficeTransfer;type:varchar(50)" json:"officeTransfer"`
+	CompanyTransfer    string   `gorm:"column:CompanyTransfer;type:varchar(50)" json:"companyTransfer"`
+	AreaTransfer       string   `gorm:"column:AreaTransfer;type:varchar(50)" json:"areaTransfer"`
+	Type               string   `gorm:"column:Type;type:varchar(50)" json:"type"`
+	JiraCode           string   `gorm:"column:JiraCode;type:varchar(50)" json:"jiraCode"`
+	Detail1            string   `gorm:"column:Detail1;type:varchar(150)" json:"detail1"`
+	Detail2            string   `gorm:"column:Detail2;type:varchar(150)" json:"detail2"`
+	Detail3            string   `gorm:"column:Detail3;type:varchar(150)" json:"detail3"`
+	Detail4            string   `gorm:"column:Detail4;type:varchar(150)" json:"detail4"`
+	Detail5            string   `gorm:"column:Detail5;type:varchar(150)" json:"detail5"`
+	Detail6            string   `gorm:"column:Detail6;type:varchar(150)" json:"detail6"`
+	Detail7            string   `gorm:"column:Detail7;type:varchar(150)" json:"detail7"`
+	Detail8            string   `gorm:"column:Detail8;type:varchar(150)" json:"detail8"`
+	Detail9            string   `gorm:"column:Detail9;type:varchar(150)" json:"detail9"`
 
-	DivisionTransfer string `gorm:"-" json:"divisionTransfer,omitempty"`
-	GroupDepTransfer string `gorm:"-" json:"groupDepTransfer,omitempty"`
-	EmailTransfer    string `gorm:"-" json:"emailTransfer,omitempty"`
+	DivisionTransfer  string `gorm:"-" json:"divisionTransfer,omitempty"`
+	GroupDepTransfer  string `gorm:"-" json:"groupDepTransfer,omitempty"`
+	EmailTransfer     string `gorm:"-" json:"emailTransfer,omitempty"`
+	RetrieveToITD     *bool  `gorm:"-" json:"retrieveToITD,omitempty"`
+	TransferSubAssets *bool  `gorm:"-" json:"transferSubAssets,omitempty"`
 }
 
 func (HANDOVER) TableName() string {
@@ -34,7 +36,7 @@ func (HANDOVER) TableName() string {
 
 type HANDOVEROTHER struct {
 	ID           string   `gorm:"column:ID;primaryKey;type:varchar(50)" json:"id"`
-	UnitCode     string   `gorm:"column:UnitCode;type:varchar(21)" json:"unitCode"`
+	UnitCode     string   `gorm:"column:UnitCode;primaryKey;type:varchar(21)" json:"unitCode"`
 	HandoverDate DateOnly `gorm:"column:HandoverDate" json:"handoverDate"`
 	UserCreated  string   `gorm:"column:UserCreated;type:varchar(50)" json:"userCreated"`
 	Form         string   `gorm:"column:Form;type:varchar(50)" json:"form"`
@@ -67,5 +69,14 @@ type HANDOVEROTHER struct {
 }
 
 func (HANDOVEROTHER) TableName() string {
-	return "HANDOVEROTHER"
+	return "HANDOVEROTHERS"
+}
+
+type UpdateEmployeeCode struct {
+	UnitCode string `gorm:"column:UnitCode;primaryKey;type:varchar(21)" json:"unitCode"`
+	HRCode   string `gorm:"column:HRCode;type:varchar(10)" json:"hrCode"`
+}
+
+func (UpdateEmployeeCode) TableName() string {
+	return "UpdateEmployeeCode"
 }

@@ -330,10 +330,11 @@ export class Assets implements OnInit {
   }
 
   updateSubAssetLists() {
-    const defaultCodes = ['MNT', 'UPS', 'MOU', 'KBO'];
+    const defaultCodes = ['MON', 'MNT', 'UPS', 'MOU', 'KBO'];
     const activeCodes = [...defaultCodes, ...this.extraSubAssetTypes];
-    this.availableSubAssetTypes = this.typeList.filter(t => activeCodes.includes(t.type?.toUpperCase()));
-    this.selectableExtraSubAssetTypes = this.typeList.filter(t => !activeCodes.includes(t.type?.toUpperCase()));
+    const currentMainType = this.addForm?.get('type')?.value?.toUpperCase() || '';
+    this.availableSubAssetTypes = this.typeList.filter(t => activeCodes.includes(t.type?.toUpperCase()) && t.type?.toUpperCase() !== currentMainType);
+    this.selectableExtraSubAssetTypes = this.typeList.filter(t => !activeCodes.includes(t.type?.toUpperCase()) && t.type?.toUpperCase() !== currentMainType);
   }
 
   resetSubAssetStates() {
@@ -611,33 +612,16 @@ export class Assets implements OnInit {
       keyboardDetail1: [null], keyboardDetail2: [null], keyboardDetail3: [null], keyboardDetail4: [null], keyboardDetail5: [null], keyboardDetail6: [null], keyboardDetail7: [null], keyboardDetail8: [null], keyboardDetail9: [null]
     });
 
-    // Listeners for wizard addForm type changes to default checkboxes and load specs
     this.addForm.get('type')?.valueChanges.subscribe(val => {
       if (val) {
-        const typeUpper = val.toUpperCase();
-        if (typeUpper === 'DPC') {
-          this.addForm.patchValue({
-            hasMonitor: true,
-            hasUps: true,
-            hasMouse: true,
-            hasKeyboard: true
-          });
-        } else if (typeUpper === 'LTP') {
-          this.addForm.patchValue({
-            hasMonitor: true,
-            hasUps: false,
-            hasMouse: true,
-            hasKeyboard: true
-          });
-        } else {
-          this.addForm.patchValue({
-            hasMonitor: false,
-            hasUps: false,
-            hasMouse: false,
-            hasKeyboard: false
-          });
-        }
+        this.addForm.patchValue({
+          hasMonitor: false,
+          hasUps: false,
+          hasMouse: false,
+          hasKeyboard: false
+        });
         this.loadAddFormDeviceConfig(val);
+        this.updateSubAssetLists();
       } else {
         this.addActiveDeviceConfig = null;
       }
@@ -645,29 +629,12 @@ export class Assets implements OnInit {
 
     this.assetForm.get('type')?.valueChanges.subscribe(val => {
       if (val && !this.selectedAsset) {
-        const typeUpper = val.toUpperCase();
-        if (typeUpper === 'DPC') {
-          this.subAssetForm.patchValue({
-            hasMonitor: true,
-            hasUps: true,
-            hasMouse: true,
-            hasKeyboard: true
-          });
-        } else if (typeUpper === 'LTP') {
-          this.subAssetForm.patchValue({
-            hasMonitor: true,
-            hasUps: false,
-            hasMouse: true,
-            hasKeyboard: true
-          });
-        } else {
-          this.subAssetForm.patchValue({
-            hasMonitor: false,
-            hasUps: false,
-            hasMouse: false,
-            hasKeyboard: false
-          });
-        }
+        this.subAssetForm.patchValue({
+          hasMonitor: false,
+          hasUps: false,
+          hasMouse: false,
+          hasKeyboard: false
+        });
         this.autoGenerateUnitCode();
       }
     });
@@ -917,7 +884,7 @@ export class Assets implements OnInit {
       advancedFilters: [{ field: 'MainAsset', operator: '==', value: data.unitCode }]
     }).subscribe((res: any) => {
       if (res.status && res.data) {
-        const subAssets: any[] = res.data;
+        const subAssets: any[] = (res.data || []).filter((sub: any) => sub.unitCode !== data.unitCode && (sub.mainAsset === data.unitCode || sub.MainAsset === data.unitCode));
         subAssets.forEach(sub => {
           const typeUpper = sub.type?.toUpperCase();
           const prefix = this.getSubAssetControlPrefix(typeUpper);
@@ -1637,16 +1604,27 @@ export class Assets implements OnInit {
   }
 
   onRefresh() {
-    if(this.isViewer()){
+    if (this.isViewer()) {
       this.currentFilter = {
         pageIndex: 1,
         pageSize: 20,
-        orderBy: 'purchasedDate desc',
-        advancedFilters:[]
+        orderBy: 'PurchasedDate desc',
+        advancedFilters: []
+      };
+    } else {
+      this.currentFilter = {
+        pageIndex: 1,
+        pageSize: 20,
+        orderBy: 'PurchasedDate desc',
+        advancedFilters: [
+          { field: 'Type', operator: '==', value: 'DPC/LTP/dpc/ltp' },
+          { field: 'State', operator: '==', value: '001/002/003' }
+        ]
       };
     }
     this.searchText = '';
     this.currentFilter.searchText = '';
+    this.searchSubject.next('');
     this.loadAssets(false);
   }
 
@@ -2025,63 +2003,74 @@ export class Assets implements OnInit {
       SubAssets: [] as any[]
     };
 
+    const getResolvedTypeCode = (candidate: string) => {
+      const match = this.typeList.find(t => t.type?.toUpperCase() === candidate.toUpperCase());
+      if (match) return match.type;
+      if (candidate.toUpperCase() === 'MNT') {
+        const monMatch = this.typeList.find(t => t.type?.toUpperCase() === 'MON');
+        if (monMatch) return monMatch.type;
+      }
+      return null;
+    };
+
     const defaultSubConfigs = [
-      { type: 'MNT', prefix: 'monitor', hasFlag: vals.hasMonitor },
-      { type: 'UPS', prefix: 'ups', hasFlag: vals.hasUps },
-      { type: 'MOU', prefix: 'mouse', hasFlag: vals.hasMouse },
-      { type: 'KBO', prefix: 'keyboard', hasFlag: vals.hasKeyboard }
+      { type: 'MON', prefix: 'monitor', hasFlag: !!vals.hasMonitor },
+      { type: 'UPS', prefix: 'ups', hasFlag: !!vals.hasUps },
+      { type: 'MOU', prefix: 'mouse', hasFlag: !!vals.hasMouse },
+      { type: 'KBO', prefix: 'keyboard', hasFlag: !!vals.hasKeyboard }
     ];
 
     const extraSubConfigs = this.extraSubAssetTypes.map(code => {
       const prefix = this.getSubAssetControlPrefix(code);
       const flagName = `has${prefix.charAt(0).toUpperCase() + prefix.slice(1)}`;
-      return { type: code, prefix: prefix, hasFlag: vals[flagName] !== false };
+      return { type: code, prefix: prefix, hasFlag: !!vals[flagName] };
     });
 
     const subAssetConfigs = [...defaultSubConfigs, ...extraSubConfigs];
 
     subAssetConfigs.forEach(config => {
       const { type, prefix, hasFlag } = config;
-      
+      if (!hasFlag) return;
+      const actualType = getResolvedTypeCode(type);
+      if (!actualType) return;
+
       const brand = vals[`${prefix}Brand`];
       const model = vals[`${prefix}Model`];
       const serial = vals[`${prefix}Serial`];
 
-      if (hasFlag) {
-        const subAsset: any = {
-          type: type,
-          brand: brand,
-          model: model,
-          serial: serial,
-          status: vals[`${prefix}Status`] || 'GOOD',
-          state: vals[`${prefix}State`] || '001',
-          vendor: vals[`${prefix}Vendor`] || vals.vendor,
-          warrantyExpiration: vals[`${prefix}WarrantyExpiration`] || 1,
-          purchasedValue: vals[`${prefix}PurchasedValue`] || 0,
-          depreciation: 0,
-          value: 0,
-          accessories: false,
-          watt: vals[`${prefix}Watt`] || '',
-          
-          department: vals.department,
-          office: vals.office,
-          company: vals.company,
-          area: vals.area,
-          division: vals.division,
-          groupDep: vals.groupDep,
-          userName: vals.userName,
-          email: vals.email,
-          hrCode: vals.hrCode,
-          purchasedDate: vals.purchasedDate,
-          usageDate: vals.usageDate,
-          recordDate: vals.recordDate,
-          notes: vals.notes
-        };
-        for (let i = 1; i <= 9; i++) {
-          subAsset[`detail${i}`] = vals[`${prefix}Detail${i}`];
-        }
-        payload.SubAssets.push(subAsset);
+      const subAsset: any = {
+        type: actualType,
+        brand: brand,
+        model: model,
+        serial: serial,
+        status: vals[`${prefix}Status`] || 'GOOD',
+        state: vals[`${prefix}State`] || '001',
+        vendor: vals[`${prefix}Vendor`] || vals.vendor,
+        warrantyExpiration: vals[`${prefix}WarrantyExpiration`] || 1,
+        purchasedValue: vals[`${prefix}PurchasedValue`] || 0,
+        depreciation: 0,
+        value: 0,
+        accessories: false,
+        watt: vals[`${prefix}Watt`] || '',
+        
+        department: vals.department,
+        office: vals.office,
+        company: vals.company,
+        area: vals.area,
+        division: vals.division,
+        groupDep: vals.groupDep,
+        userName: vals.userName,
+        email: vals.email,
+        hrCode: vals.hrCode,
+        purchasedDate: vals.purchasedDate,
+        usageDate: vals.usageDate,
+        recordDate: vals.recordDate,
+        notes: vals.notes
+      };
+      for (let i = 1; i <= 9; i++) {
+        subAsset[`detail${i}`] = vals[`${prefix}Detail${i}`];
       }
+      payload.SubAssets.push(subAsset);
     });
 
     this.assetService.create(payload).subscribe({
@@ -2261,6 +2250,7 @@ export class Assets implements OnInit {
   }
 
   private readonly SUB_ASSET_PREFIX_MAP: Record<string, string> = {
+    'MON': 'monitor',
     'MNT': 'monitor',
     'UPS': 'ups',
     'MOU': 'mouse',
@@ -2268,7 +2258,7 @@ export class Assets implements OnInit {
   };
 
   private readonly SUB_ASSET_CODE_MAP: Record<string, string> = {
-    'monitor': 'MNT',
+    'monitor': 'MON',
     'ups': 'UPS',
     'mouse': 'MOU',
     'keyboard': 'KBO'
@@ -2286,7 +2276,7 @@ export class Assets implements OnInit {
   }
 
   loadSubAssetDeviceConfigs() {
-    const defaultCodes = ['MNT', 'UPS', 'MOU', 'KBO'];
+    const defaultCodes = ['MON', 'MNT', 'UPS', 'MOU', 'KBO'];
     const activeCodes = Array.from(new Set([...defaultCodes, ...this.extraSubAssetTypes]));
     activeCodes.forEach(code => {
       this.loadSingleSubAssetDeviceConfig(code.toUpperCase());

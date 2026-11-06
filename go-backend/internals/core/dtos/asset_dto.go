@@ -51,6 +51,13 @@ type AssetDto struct {
 	VendorName     string     `json:"vendorName,omitempty"`
 	StateName      string     `json:"stateName,omitempty"`
 	DivisionName   string     `json:"divisionName,omitempty"`
+	GroupDepName   string     `json:"groupDepName,omitempty"`
+	AD             bool       `json:"ad"`
+	ME             bool       `json:"me"`
+	TM             bool       `json:"tm"`
+	AdOS           string     `json:"adOS,omitempty"`
+	MeTime         string     `json:"meTime,omitempty"`
+	TmTime         string     `json:"tmTime,omitempty"`
 	SubAssets      []AssetDto `json:"subAssets,omitempty"`
 }
 
@@ -70,16 +77,40 @@ type UpdateMainAssetDto struct {
 	MainAsset *string `json:"mainAsset"`
 }
 
+type ChartItemDto struct {
+	Name  string `json:"name"`
+	Value int    `json:"value"`
+}
+
+type PurchasedYearDto struct {
+	Year  int `json:"year"`
+	Count int `json:"count"`
+}
+
 type DashboardMetricsDto struct {
-	TotalAssets     int64          `json:"totalAssets"`
-	TotalInUse      int64          `json:"totalInUse"`
-	TotalSpare      int64          `json:"totalSpare"`
-	TotalDisposed   int64          `json:"totalDisposed"`
-	TotalBroken     int64          `json:"totalBroken"`
-	AssetsByType    map[string]int `json:"assetsByType"`
-	AssetsByDept    map[string]int `json:"assetsByDept"`
-	AssetsByCompany map[string]int `json:"assetsByCompany"`
-	AssetsByArea    map[string]int `json:"assetsByArea"`
+	TotalAssets     int64              `json:"totalAssets"`
+	TransferPC      int                `json:"transferPC"`
+	NewPC           int                `json:"newPC"`
+	GroupData       []ChartItemDto     `json:"groupData"`
+	DivisionData    []ChartItemDto     `json:"divisionData"`
+	RegionData      []ChartItemDto     `json:"regionData"`
+	StateData       []ChartItemDto     `json:"stateData"`
+	EolData         []ChartItemDto     `json:"eolData"`
+	PurchasedData   []PurchasedYearDto `json:"purchasedData"`
+	TotalInUse      int64              `json:"totalInUse,omitempty"`
+	TotalSpare      int64              `json:"totalSpare,omitempty"`
+	TotalDisposed   int64              `json:"totalDisposed,omitempty"`
+	TotalBroken     int64              `json:"totalBroken,omitempty"`
+	AssetsByType    map[string]int     `json:"assetsByType,omitempty"`
+	AssetsByDept    map[string]int     `json:"assetsByDept,omitempty"`
+	AssetsByCompany map[string]int     `json:"assetsByCompany,omitempty"`
+	AssetsByArea    map[string]int     `json:"assetsByArea,omitempty"`
+}
+
+type AssetSuggestionDto struct {
+	Value    string `json:"value"`
+	Category string `json:"category"`
+	State    string `json:"state"`
 }
 
 type ImportResultDto struct {

@@ -7,6 +7,10 @@ server:
 log:
   level: info
 
+ntp:
+  disable_startup_check: true
+  disable_failure: true
+
 telemetry:
   metrics:
     enabled: false
@@ -33,9 +37,6 @@ notifier:
 authentication_backend:
   file:
     path: /config/users_database.yml
-    password:
-      algorithm: pbkdf2
-      iterations: 310000
 
 access_control:
   default_policy: one_factor

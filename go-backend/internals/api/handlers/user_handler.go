@@ -4,25 +4,21 @@ import (
 	"net/http"
 
 	"go-backend/internals/api/middlewares"
-	"go-backend/internals/core/domains"
 	"go-backend/internals/core/dtos"
-	"go-backend/internals/repository"
-	"go-backend/internals/services"
+	"go-backend/internals/core/ports"
 
 	"github.com/gin-gonic/gin"
 )
 
 type UserHandler struct {
-	userService *services.UserInfoService
-	authService *services.AuthService
-	userRepo    *repository.GenericRepository[domains.USERINFO]
+	userUseCase ports.UserInfoUseCase
+	authUseCase ports.AuthUseCase
 }
 
-func NewUserHandler(userService *services.UserInfoService, authService *services.AuthService, userRepo *repository.GenericRepository[domains.USERINFO]) *UserHandler {
+func NewUserHandler(userUseCase ports.UserInfoUseCase, authUseCase ports.AuthUseCase) *UserHandler {
 	return &UserHandler{
-		userService: userService,
-		authService: authService,
-		userRepo:    userRepo,
+		userUseCase: userUseCase,
+		authUseCase: authUseCase,
 	}
 }
 
@@ -34,7 +30,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	res, err := h.authService.Login(c.Request.Context(), dto.Username, dto.Password)
+	res, err := h.authUseCase.Login(c.Request.Context(), dto.Username, dto.Password)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -57,7 +53,7 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.userService.ChangePassword(c.Request.Context(), requesterId, &dto); err != nil {
+	if err := h.userUseCase.ChangePassword(c.Request.Context(), requesterId, &dto); err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
 	}
@@ -65,13 +61,13 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, dtos.SuccessResponse(nil, "Password changed successfully"))
 }
 
-// GetHistory handles GET /api/users/:userId/history
+// GetHistory handles GET /api/users/:id/history
 func (h *UserHandler) GetHistory(c *gin.Context) {
 	userId := c.Param("id")
 	if userId == "" {
 		userId = c.Param("userId")
 	}
-	history, err := h.userService.GetHistory(c.Request.Context(), userId)
+	history, err := h.userUseCase.GetHistory(c.Request.Context(), userId)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -83,7 +79,7 @@ func (h *UserHandler) GetHistory(c *gin.Context) {
 // GetById handles GET /api/users/:id
 func (h *UserHandler) GetById(c *gin.Context) {
 	id := c.Param("id")
-	user, err := h.userService.GetByID(c.Request.Context(), id)
+	user, err := h.userUseCase.GetByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse("User not found or Inactive"))
 		return
@@ -101,7 +97,7 @@ func (h *UserHandler) Insert(c *gin.Context) {
 		return
 	}
 
-	created, err := h.userService.Insert(c.Request.Context(), requesterId, &dto)
+	created, err := h.userUseCase.Insert(c.Request.Context(), requesterId, &dto)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -121,7 +117,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	if err := h.userService.Update(c.Request.Context(), requesterId, id, &dto); err != nil {
+	if err := h.userUseCase.Update(c.Request.Context(), requesterId, id, &dto); err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
 	}
@@ -129,12 +125,25 @@ func (h *UserHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, dtos.SuccessResponse(dto, "Updated successfully"))
 }
 
+// Delete handles DELETE /api/users/:id
+func (h *UserHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	requesterId := middlewares.GetUserSession(c)
+
+	if err := h.userUseCase.Delete(c.Request.Context(), requesterId, id); err != nil {
+		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, dtos.SuccessResponse(nil, "Deleted successfully"))
+}
+
 // Search handles POST /api/users/search
 func (h *UserHandler) Search(c *gin.Context) {
 	var filter dtos.Filter
 	_ = c.ShouldBindJSON(&filter)
 
-	entities, total, err := h.userRepo.FindPaged(c.Request.Context(), &filter)
+	entities, total, err := h.userUseCase.Search(c.Request.Context(), &filter)
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -145,7 +154,7 @@ func (h *UserHandler) Search(c *gin.Context) {
 
 // GetAll handles GET /api/users/get-all
 func (h *UserHandler) GetAll(c *gin.Context) {
-	entities, err := h.userRepo.FindAll(c.Request.Context())
+	entities, err := h.userUseCase.GetAll(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusOK, dtos.ErrorResponse(err.Error()))
 		return
@@ -155,5 +164,7 @@ func (h *UserHandler) GetAll(c *gin.Context) {
 
 // Logout handles POST /api/users/logout
 func (h *UserHandler) Logout(c *gin.Context) {
+	userSession := middlewares.GetUserSession(c)
+	h.userUseCase.Logout(c.Request.Context(), userSession)
 	c.JSON(http.StatusOK, dtos.SuccessResponse(nil, "Logged out successfully"))
 }

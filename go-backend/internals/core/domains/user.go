@@ -6,14 +6,14 @@ import (
 
 type USERINFO struct {
 	UserID              string     `gorm:"column:UserID;primaryKey;type:varchar(50)" json:"userId"`
-	Pass                string     `gorm:"column:Pass;type:varchar(255)" json:"pass,omitempty"`
+	Pass                string     `gorm:"column:Pass;type:varchar(255)" json:"-"`
 	UserName            string     `gorm:"column:UserName;type:varchar(100)" json:"userName"`
 	Description         string     `gorm:"column:Description;type:varchar(150)" json:"description"`
 	Area                string     `gorm:"column:Area;type:varchar(50)" json:"area"`
 	Role                string     `gorm:"column:Role;type:varchar(50)" json:"role"`
 	IsActive            *bool      `gorm:"column:IsActive" json:"isActive"`
-	FailedLoginAttempts *int       `gorm:"column:FailedLoginAttempts" json:"failedLoginAttempts"`
-	LockoutEnd          *time.Time `gorm:"column:LockoutEnd" json:"lockoutEnd"`
+	FailedLoginAttempts *int       `gorm:"column:FailedLoginAttempts" json:"failedLoginAttempts,omitempty"`
+	LockoutEnd          *time.Time `gorm:"column:LockoutEnd" json:"lockoutEnd,omitempty"`
 
 	// Populated for DTOs
 	Roles       []string `gorm:"-" json:"roles,omitempty"`
