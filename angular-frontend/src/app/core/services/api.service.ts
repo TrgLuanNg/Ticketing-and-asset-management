@@ -76,6 +76,7 @@ export interface TechSpecItem {
 
 export interface UserInfo {
   userID: string;
+  userId?: string;
   userName?: string;
   description?: string;
   area?: string;

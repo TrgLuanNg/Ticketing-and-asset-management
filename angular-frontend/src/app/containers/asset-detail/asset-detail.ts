@@ -1114,7 +1114,9 @@ export class AssetDetail implements OnInit {
       filter.advancedFilters.push({ field: 'dateModified', operator: '>=', value: fromDate.toISOString() });
     }
     if (toDate) {
-      filter.advancedFilters.push({ field: 'dateModified', operator: '<=', value: toDate.toISOString() });
+      const endOfDay = new Date(toDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      filter.advancedFilters.push({ field: 'dateModified', operator: '<=', value: endOfDay.toISOString() });
     }
 
     this.assetsLogService.search(filter).subscribe((res: any) => {
@@ -1517,6 +1519,9 @@ export class AssetDetail implements OnInit {
 
   onTabIndexChange(index: number) {
     this.activeDetailTabIndex = index;
+    if (index === 3) {
+      this.onSoftwareTabSelect();
+    }
     if (index !== 0 && this.isEditingDetails) {
       this.isEditingDetails = false;
       if (this.selectedAsset) {
@@ -2315,7 +2320,7 @@ export class AssetDetail implements OnInit {
     if (this.isViewer()) return false;
     if (!this.selectedAsset || !this.selectedAsset.type) return false;
     const t = this.selectedAsset.type.toUpperCase().trim();
-    return t === 'LTP' || t === 'DPC';
+    return t === 'LTP' || t === 'DPC' || t.includes('LTP') || t.includes('DPC') || t.includes('LAPTOP') || t.includes('PC');
   }
 
   onSoftwareTabSelect() {

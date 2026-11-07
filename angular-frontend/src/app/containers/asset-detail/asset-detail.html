@@ -531,7 +531,7 @@
                   <tbody>
                     <tr *ngFor="let data of logTable.data">
                       <td>{{ data.dateModified | date:'yyyy-MM-dd HH:mm:ss' }}</td>
-                      <td><strong>{{ data.userID }}</strong></td>
+                      <td><strong>{{ data.userID || data.userId }}</strong></td>
                       <td>{{ data.action }}</td>
                       <td>{{ data.actionLogs }}</td>
                     </tr>
@@ -542,7 +542,7 @@
           </nz-tab>
 
           <!-- Tab 4: Software -->
-          <nz-tab nzTitle="Software" *ngIf="isLtpOrDpc()" (nzClick)="onSoftwareTabSelect()">
+          <nz-tab nzTitle="Software" *ngIf="isLtpOrDpc()" (nzSelect)="onSoftwareTabSelect()">
             <div class="tab-scroll-content">
               <div class="card-inner">
                 <div class="card-inner-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">

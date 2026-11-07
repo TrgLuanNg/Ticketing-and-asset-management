@@ -1,11 +1,12 @@
 package domains
 
 import (
+	"encoding/json"
 	"time"
 )
 
 type USERINFO struct {
-	UserID              string     `gorm:"column:UserID;primaryKey;type:varchar(50)" json:"userId"`
+	UserID              string     `gorm:"column:UserID;primaryKey;type:varchar(50)" json:"userID"`
 	Pass                string     `gorm:"column:Pass;type:varchar(255)" json:"-"`
 	UserName            string     `gorm:"column:UserName;type:varchar(100)" json:"userName"`
 	Description         string     `gorm:"column:Description;type:varchar(150)" json:"description"`
@@ -20,22 +21,44 @@ type USERINFO struct {
 	Permissions []string `gorm:"-" json:"permissions,omitempty"`
 }
 
+func (u USERINFO) MarshalJSON() ([]byte, error) {
+	type Alias USERINFO
+	return json.Marshal(&struct {
+		Alias
+		UserIDAlias string `json:"userId"`
+	}{
+		Alias:       Alias(u),
+		UserIDAlias: u.UserID,
+	})
+}
+
 func (USERINFO) TableName() string {
 	return "USERINFO"
 }
 
 type PERMISSION struct {
-	UserID                     string `gorm:"column:UserID;primaryKey;type:varchar(50)" json:"userId"`
-	AssetsModify               *bool  `gorm:"column:AssetsModify" json:"assetsModify"`
-	AssetsDel                  *bool  `gorm:"column:AssetsDel" json:"assetsDel"`
-	DepartmentModify           *bool  `gorm:"column:DepartmentModify" json:"departmentModify"`
-	DepartmentDel              *bool  `gorm:"column:DepartmentDel" json:"departmentDel"`
-	TypeModify                 *bool  `gorm:"column:TypeModify" json:"typeModify"`
-	TypeDel                    *bool  `gorm:"column:TypeDel" json:"typeDel"`
-	UserManager                *bool  `gorm:"column:UserManager" json:"userManager"`
-	Disposal                   *bool  `gorm:"column:Disposal" json:"disposal"`
-	PermissionApproval         *bool  `gorm:"column:PermissionApproval" json:"permissionApproval"`
+	UserID                      string `gorm:"column:UserID;primaryKey;type:varchar(50)" json:"userID"`
+	AssetsModify                *bool  `gorm:"column:AssetsModify" json:"assetsModify"`
+	AssetsDel                   *bool  `gorm:"column:AssetsDel" json:"assetsDel"`
+	DepartmentModify            *bool  `gorm:"column:DepartmentModify" json:"departmentModify"`
+	DepartmentDel               *bool  `gorm:"column:DepartmentDel" json:"departmentDel"`
+	TypeModify                  *bool  `gorm:"column:TypeModify" json:"typeModify"`
+	TypeDel                     *bool  `gorm:"column:TypeDel" json:"typeDel"`
+	UserManager                 *bool  `gorm:"column:UserManager" json:"userManager"`
+	Disposal                    *bool  `gorm:"column:Disposal" json:"disposal"`
+	PermissionApproval          *bool  `gorm:"column:PermissionApproval" json:"permissionApproval"`
 	AllowSeeAllFromAllowedAreas *bool  `gorm:"column:AllowSeeAllFromAllowedAreas" json:"allowSeeAllFromAllowedAreas"`
+}
+
+func (p PERMISSION) MarshalJSON() ([]byte, error) {
+	type Alias PERMISSION
+	return json.Marshal(&struct {
+		Alias
+		UserIDAlias string `json:"userId"`
+	}{
+		Alias:       Alias(p),
+		UserIDAlias: p.UserID,
+	})
 }
 
 func (PERMISSION) TableName() string {

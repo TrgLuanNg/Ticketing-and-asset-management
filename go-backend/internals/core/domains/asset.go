@@ -1,6 +1,7 @@
 package domains
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -79,10 +80,21 @@ func (ACCESSORY) TableName() string {
 type ASSETSLOG struct {
 	ID           int64     `gorm:"column:ID;primaryKey;autoIncrement" json:"id"`
 	UnitCode     string    `gorm:"column:UnitCode;type:varchar(21)" json:"unitCode"`
-	UserID       string    `gorm:"column:UserID;type:varchar(50)" json:"userId"`
+	UserID       string    `gorm:"column:UserID;type:varchar(50)" json:"userID"`
 	Action       string    `gorm:"column:Action;type:varchar(50)" json:"action"`
 	ActionLogs   string    `gorm:"column:ActionLogs;type:text" json:"actionLogs"`
 	DateModified time.Time `gorm:"column:DateModified" json:"dateModified"`
+}
+
+func (l ASSETSLOG) MarshalJSON() ([]byte, error) {
+	type Alias ASSETSLOG
+	return json.Marshal(&struct {
+		Alias
+		UserIDAlias string `json:"userId"`
+	}{
+		Alias:       Alias(l),
+		UserIDAlias: l.UserID,
+	})
 }
 
 func (ASSETSLOG) TableName() string {

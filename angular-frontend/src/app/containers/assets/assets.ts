@@ -32,8 +32,8 @@ import { UserService } from '../../core/services/user.service';
 import { LookupCacheService } from '../../core/services/lookup-cache.service';
 import saveAs from 'file-saver';
 import { ActivatedRoute, Router } from '@angular/router';
-import { EMPTY } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { EMPTY, Subject } from 'rxjs';
+import { tap, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-assets',
@@ -182,6 +182,7 @@ export class Assets implements OnInit {
   problemEditMode = false;
   isDisposalTransferEnabled = false;
   allowedAreas: string[] = [];
+  private searchSubject = new Subject<string>();
 
   constructor(
     private assetService: AssetService,
@@ -207,6 +208,32 @@ export class Assets implements OnInit {
 
   ngOnInit() {
     this.initializeDefaultFilters();
+
+    this.searchSubject.pipe(
+      debounceTime(400),
+      distinctUntilChanged(),
+      switchMap(value => {
+        if (!value || value.trim() === '') {
+          this.suggestions = [];
+          this.currentFilter.searchText = '';
+          this.currentFilter.pageIndex = 1;
+          this.loadAssets();
+          this.cdr.markForCheck();
+          return EMPTY;
+        }
+        this.currentFilter.searchText = value;
+        this.currentFilter.pageIndex = 1;
+        this.loadAssets();
+        const filterCopy = JSON.parse(JSON.stringify(this.currentFilter));
+        return this.assetService.getSuggestions(filterCopy).pipe(
+          tap(res => {
+            this.suggestions = res.status && res.data ? res.data : [];
+            this.cdr.markForCheck();
+          })
+        );
+      })
+    ).subscribe();
+
     const user = this.getCurrentUser();
     this.allowedAreas = [];
 
@@ -370,6 +397,7 @@ export class Assets implements OnInit {
 
   onSearchChange(value: string): void {
     this.searchText = value;
+    this.searchSubject.next(value);
   }
 
   onSearch(value?: string): void {
@@ -1104,7 +1132,9 @@ export class Assets implements OnInit {
       filter.advancedFilters.push({ field: 'dateModified', operator: '>=', value: fromDate.toISOString() });
     }
     if (toDate) {
-      filter.advancedFilters.push({ field: 'dateModified', operator: '<=', value: toDate.toISOString() });
+      const endOfDay = new Date(toDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      filter.advancedFilters.push({ field: 'dateModified', operator: '<=', value: endOfDay.toISOString() });
     }
 
     this.assetsLogService.search(filter).subscribe((res: any) => {

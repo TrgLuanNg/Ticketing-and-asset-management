@@ -27,7 +27,10 @@ func TokenValidationMiddleware(secretKey string) gin.HandlerFunc {
 			strings.HasPrefix(path, "/openapi") ||
 			strings.Contains(path, "swagger") ||
 			strings.HasPrefix(path, "/ws") ||
-			strings.HasPrefix(path, "/debug/pprof") {
+			strings.HasPrefix(path, "/debug/pprof") ||
+			strings.HasSuffix(path, "/export") ||
+			strings.Contains(path, "/export/") ||
+			strings.HasSuffix(path, "/download-template") {
 			c.Next()
 			return
 		}

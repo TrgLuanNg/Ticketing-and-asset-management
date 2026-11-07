@@ -98,7 +98,10 @@ export class User implements OnInit {
     this.userService.getAll().subscribe({
       next: (res: any) => {
         if (res.status && res.data) {
-          this.allUsers = res.data;
+          this.allUsers = res.data.map((u: any) => ({
+            ...u,
+            userID: u.userID || u.userId || u.UserId
+          }));
         } else {
           this.allUsers = [];
         }
@@ -120,8 +123,11 @@ export class User implements OnInit {
       next: (res: any) => {
         const list = res.data || [];
         this.userPermissionsMap = {};
-        list.forEach((p: PermissionEntity) => {
-          this.userPermissionsMap[p.userID] = p;
+        list.forEach((p: any) => {
+          const uid = p.userID || p.userId || p.UserId;
+          if (uid) {
+            this.userPermissionsMap[uid] = { ...p, userID: uid };
+          }
         });
         this.cdr.detectChanges();
       },
@@ -188,7 +194,8 @@ export class User implements OnInit {
     this.historyLoading = true;
     this.userHistory = [];
 
-    this.userService.getHistory(this.selectedUser.userID).subscribe({
+    const uid = this.selectedUser.userID || (this.selectedUser as any).userId;
+    this.userService.getHistory(uid).subscribe({
       next: (res: any) => {
         if (res.status && res.data) {
           this.userHistory = res.data;
@@ -212,7 +219,9 @@ export class User implements OnInit {
   }
 
   onRowSelect(user: UserInfo): void {
-    if (this.selectedUser?.userID === user.userID) {
+    const currentId = this.selectedUser ? (this.selectedUser.userID || (this.selectedUser as any).userId) : null;
+    const targetId = user ? (user.userID || (user as any).userId) : null;
+    if (currentId && currentId === targetId) {
       this.selectedUser = null;
     } else {
       this.selectedUser = user;
@@ -295,12 +304,13 @@ export class User implements OnInit {
     if (!this.selectedUser) return;
     this.loading = true;
 
+    const uid = this.selectedUser.userID || (this.selectedUser as any).userId;
     const updatedUser = {
       ...this.selectedUser,
       roles: [this.selectedUserRole]
     };
 
-    this.userService.update(this.selectedUser.userID, updatedUser).subscribe({
+    this.userService.update(uid, updatedUser).subscribe({
       next: (res: any) => {
         this.loading = false;
         if (res.status) {
@@ -321,8 +331,9 @@ export class User implements OnInit {
       this.message.warning('Please select a user first');
       return;
     }
+    const uid = this.selectedUser.userID || (this.selectedUser as any).userId;
     this.editUserForm.patchValue({
-      userID: this.selectedUser.userID,
+      userID: uid,
       userName: this.selectedUser.userName
     });
     this.isEditUserModalVisible = true;
@@ -342,13 +353,14 @@ export class User implements OnInit {
     if (!this.selectedUser) return;
     this.loading = true;
 
+    const uid = this.selectedUser.userID || (this.selectedUser as any).userId;
     const val = this.editUserForm.getRawValue();
     const updatedUser = {
       ...this.selectedUser,
       userName: val.userName
     };
 
-    this.userService.update(this.selectedUser.userID, updatedUser).subscribe({
+    this.userService.update(uid, updatedUser).subscribe({
       next: (res: any) => {
         this.loading = false;
         if (res.status) {

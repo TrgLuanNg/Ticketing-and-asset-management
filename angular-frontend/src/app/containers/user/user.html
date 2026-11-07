@@ -42,8 +42,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let data of basicTable.data" (click)="onRowSelect(data)" [class.selected]="selectedUser?.userID === data.userID" class="clickable-row">
-              <td><strong>{{ data.userID }}</strong></td>
+            <tr *ngFor="let data of basicTable.data" (click)="onRowSelect(data)" [class.selected]="(selectedUser?.userID || selectedUser?.userId) === (data.userID || data.userId)" class="clickable-row">
+              <td><strong>{{ data.userID || data.userId }}</strong></td>
               <td>{{ data.userName }}</td>
               <td>{{ data.description }}</td>
               <td>
@@ -71,7 +71,7 @@
         </thead>
         <tbody>
           <tr *ngFor="let data of areasTable.data">
-            <td><strong>{{ data.userID }}</strong></td>
+            <td><strong>{{ data.userID || data.userId }}</strong></td>
             <td>{{ data.userName || 'N/A' }}</td>
             <td class="text-center">
               <label nz-checkbox [ngModel]="hasArea(data, 'South')" (ngModelChange)="toggleArea(data, 'South', $event)"></label>
@@ -111,7 +111,7 @@
         </thead>
         <tbody>
           <tr *ngFor="let data of permsTable.data">
-            <td nzLeft><strong>{{ data.userID }}</strong></td>
+            <td nzLeft><strong>{{ data.userID || data.userId }}</strong></td>
             <td>{{ data.userName || 'N/A' }}</td>
             <td class="text-center">
               <label nz-checkbox [(ngModel)]="getOrCreatePermission(data.userID).assetsModify"></label>

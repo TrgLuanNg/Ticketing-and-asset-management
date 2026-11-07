@@ -110,8 +110,11 @@ func NewAssetsLogRepository(db *gorm.DB) *AssetsLogRepository {
 }
 
 func (r *AssetsLogRepository) FindForExport(ctx context.Context, unitCode string, fromDate, toDate *time.Time) ([]domains.ASSETSLOG, error) {
-	var logs []domains.ASSETSLOG
-	q := getDB(ctx, r.db).Model(&domains.ASSETSLOG{}).Where("\"UnitCode\" = ?", unitCode)
+	logs := make([]domains.ASSETSLOG, 0)
+	q := getDB(ctx, r.db).Model(&domains.ASSETSLOG{})
+	if strings.TrimSpace(unitCode) != "" {
+		q = q.Where("LOWER(\"UnitCode\") = LOWER(?)", strings.TrimSpace(unitCode))
+	}
 	if fromDate != nil {
 		q = q.Where("\"DateModified\" >= ?", *fromDate)
 	}

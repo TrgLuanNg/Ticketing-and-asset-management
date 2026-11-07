@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"go-backend/internals/core/dtos"
@@ -128,7 +129,7 @@ func (r *GenericRepository[T]) ApplyCommonFilters(query *gorm.DB, filter *dtos.F
 			var orArgs []any
 			for _, prop := range r.searchProps {
 				col := r.resolveColumn(prop)
-				orClauses = append(orClauses, fmt.Sprintf("LOWER(CAST(\"%s\" AS TEXT)) LIKE LOWER(?)", col))
+				orClauses = append(orClauses, fmt.Sprintf("LOWER(CAST(\"%s\" AS VARCHAR(500))) LIKE LOWER(?)", col))
 				orArgs = append(orArgs, likePattern)
 			}
 			if len(orClauses) > 0 {
@@ -160,9 +161,9 @@ func (r *GenericRepository[T]) ApplyCommonFilters(query *gorm.DB, filter *dtos.F
 				}
 			}
 			if len(trimmed) == 1 {
-				query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS TEXT)) = LOWER(?)", col), trimmed[0])
+				query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS VARCHAR(500))) = LOWER(?)", col), trimmed[0])
 			} else if len(trimmed) > 1 {
-				query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS TEXT)) IN (?)", col), trimmed)
+				query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS VARCHAR(500))) IN (?)", col), trimmed)
 			}
 		case "!=", "neq":
 			parts := strings.Split(processedVal, "/")
@@ -174,9 +175,9 @@ func (r *GenericRepository[T]) ApplyCommonFilters(query *gorm.DB, filter *dtos.F
 				}
 			}
 			if len(trimmed) == 1 {
-				query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS TEXT)) != LOWER(?)", col), trimmed[0])
+				query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS VARCHAR(500))) != LOWER(?)", col), trimmed[0])
 			} else if len(trimmed) > 1 {
-				query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS TEXT)) NOT IN (?)", col), trimmed)
+				query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS VARCHAR(500))) NOT IN (?)", col), trimmed)
 			}
 		case ">=", "gte":
 			query = query.Where(fmt.Sprintf("\"%s\" >= ?", col), rawVal)
@@ -187,9 +188,9 @@ func (r *GenericRepository[T]) ApplyCommonFilters(query *gorm.DB, filter *dtos.F
 		case "<", "lt":
 			query = query.Where(fmt.Sprintf("\"%s\" < ?", col), rawVal)
 		case "startsWith":
-			query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS TEXT)) LIKE LOWER(?)", col), rawVal+"%")
+			query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS VARCHAR(500))) LIKE LOWER(?)", col), rawVal+"%")
 		case "endsWith":
-			query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS TEXT)) LIKE LOWER(?)", col), "%"+rawVal)
+			query = query.Where(fmt.Sprintf("LOWER(CAST(\"%s\" AS VARCHAR(500))) LIKE LOWER(?)", col), "%"+rawVal)
 		default:
 			parts := strings.Split(processedVal, "/")
 			var orClauses []string
@@ -197,7 +198,7 @@ func (r *GenericRepository[T]) ApplyCommonFilters(query *gorm.DB, filter *dtos.F
 			for _, p := range parts {
 				t := strings.TrimSpace(strings.ReplaceAll(p, placeholder, "/"))
 				if t != "" {
-					orClauses = append(orClauses, fmt.Sprintf("LOWER(CAST(\"%s\" AS TEXT)) LIKE LOWER(?)", col))
+					orClauses = append(orClauses, fmt.Sprintf("LOWER(CAST(\"%s\" AS VARCHAR(500))) LIKE LOWER(?)", col))
 					orArgs = append(orArgs, "%"+t+"%")
 				}
 			}
@@ -226,7 +227,7 @@ func (r *GenericRepository[T]) ApplyCommonFilters(query *gorm.DB, filter *dtos.F
 }
 
 func (r *GenericRepository[T]) FindPaged(ctx context.Context, filter *dtos.Filter) ([]T, int64, error) {
-	var entities []T
+	entities := make([]T, 0)
 	var total int64
 
 	db := getDB(ctx, r.db)
@@ -256,7 +257,7 @@ func (r *GenericRepository[T]) FindPaged(ctx context.Context, filter *dtos.Filte
 }
 
 func (r *GenericRepository[T]) FindAll(ctx context.Context) ([]T, error) {
-	var entities []T
+	entities := make([]T, 0)
 	db := getDB(ctx, r.db)
 	if r.defaultOrder != "" {
 		db = db.Order(r.defaultOrder)
@@ -267,9 +268,20 @@ func (r *GenericRepository[T]) FindAll(ctx context.Context) ([]T, error) {
 	return entities, nil
 }
 
+func (r *GenericRepository[T]) applyPrimaryKeyWhere(q *gorm.DB, id any) *gorm.DB {
+	if strID, ok := id.(string); ok {
+		trimmed := strings.TrimSpace(strID)
+		if intVal, err := strconv.ParseInt(trimmed, 10, 64); err == nil {
+			return q.Where(fmt.Sprintf("\"%s\" = ? OR CAST(\"%s\" AS VARCHAR(500)) = ?", r.primaryKey, r.primaryKey), intVal, trimmed)
+		}
+		return q.Where(fmt.Sprintf("CAST(\"%s\" AS VARCHAR(500)) = ?", r.primaryKey), trimmed)
+	}
+	return q.Where(fmt.Sprintf("\"%s\" = ?", r.primaryKey), id)
+}
+
 func (r *GenericRepository[T]) FindByID(ctx context.Context, id any) (*T, error) {
 	var entity T
-	err := getDB(ctx, r.db).Where(fmt.Sprintf("\"%s\" = ?", r.primaryKey), id).First(&entity).Error
+	err := r.applyPrimaryKeyWhere(getDB(ctx, r.db), id).First(&entity).Error
 	if err != nil {
 		return nil, err
 	}
@@ -281,13 +293,12 @@ func (r *GenericRepository[T]) Create(ctx context.Context, entity *T) error {
 }
 
 func (r *GenericRepository[T]) Update(ctx context.Context, id any, entity *T) error {
-	return getDB(ctx, r.db).Model(new(T)).
-		Where(fmt.Sprintf("\"%s\" = ?", r.primaryKey), id).
+	return r.applyPrimaryKeyWhere(getDB(ctx, r.db).Model(new(T)), id).
 		Select("*").
 		Omit(r.primaryKey).
 		Updates(entity).Error
 }
 
 func (r *GenericRepository[T]) Delete(ctx context.Context, id any) error {
-	return getDB(ctx, r.db).Where(fmt.Sprintf("\"%s\" = ?", r.primaryKey), id).Delete(new(T)).Error
+	return r.applyPrimaryKeyWhere(getDB(ctx, r.db), id).Delete(new(T)).Error
 }
